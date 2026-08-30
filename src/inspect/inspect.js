@@ -59,7 +59,7 @@ function lineage(value) {
   return Object.freeze(chain.map((step) => Object.freeze({ ...step })));
 }
 
-function signalSummary(entry) {
+function solveTraceEntry(entry) {
   const summary = {
     nodeId: entry.nodeId,
     state: entry.state,
@@ -94,21 +94,29 @@ function signalSummary(entry) {
   return Object.freeze(summary);
 }
 
-function signals(solve) {
+function solveTrace(solve) {
   if (!solve) return null;
   return Object.freeze({
     usage: Object.freeze({ ...(solve.usage ?? {}) }),
     stops: Object.freeze((solve.stops ?? []).map((entry) => Object.freeze({ ...entry }))),
-    trace: Object.freeze((solve.trace ?? []).map(signalSummary)),
+    trace: Object.freeze((solve.trace ?? []).map(solveTraceEntry)),
   });
 }
 
+// Compatibility alias for M0.6 consumers. New code must call this Solve Trace,
+// reserving Signal for typed addressable world/runtime signals.
+function signals(solve) {
+  return solveTrace(solve);
+}
+
 function inspect(value, { solve = null } = {}) {
+  const trace = solveTrace(solve);
   return Object.freeze({
     facts: facts(value),
     possibilities: possibilities(value),
     lineage: lineage(value),
-    signals: signals(solve),
+    solveTrace: trace,
+    signals: trace,
   });
 }
 
@@ -143,6 +151,8 @@ module.exports = {
   facts,
   possibilities,
   lineage,
+  solveTraceEntry,
+  solveTrace,
   signals,
   inspect,
   inspectWorld,
