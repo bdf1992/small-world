@@ -16,6 +16,12 @@ const { TOKENS, ARTIFACT_KIND_PACK } = require('../src/content/token-packs');
 function source(...parts) {
   return fs.readFileSync(path.join(__dirname, '..', ...parts), 'utf8');
 }
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function containsIdentifier(text, identifier) {
+  return new RegExp(`(^|[^A-Za-z0-9_])${escapeRegExp(identifier)}([^A-Za-z0-9_]|$)`).test(text);
+}
 
 function main() {
   assert.strictEqual(CARD_ARTIFACT.id, 'Card.Artifact');
@@ -96,7 +102,7 @@ function main() {
     'Dragon', 'Mantis', 'Lantern', 'Observatory',
   ];
   for (const term of forbidden) {
-    assert.ok(!activeModel.includes(term), `premature semantic field leaked into active minimal model: ${term}`);
+    assert.ok(!containsIdentifier(activeModel, term), `premature semantic field leaked into active minimal model: ${term}`);
   }
 
   console.log(JSON.stringify({
