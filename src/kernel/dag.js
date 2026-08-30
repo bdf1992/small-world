@@ -2,14 +2,23 @@
 
 const { createBudgetState, stop } = require('./budget');
 
+function nonNegativeInteger(name, value) {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${name} must be a non-negative integer`);
+  }
+  return value;
+}
+
 function createNode(spec) {
   if (!spec?.id) throw new Error('node requires id');
   if (typeof spec.evaluate !== 'function') throw new Error(`node ${spec.id} requires evaluate`);
+  const slotCost = nonNegativeInteger(`node ${spec.id} slotCost`, spec.slotCost ?? 0);
+  const instanceCost = nonNegativeInteger(`node ${spec.id} instanceCost`, spec.instanceCost ?? 0);
   return Object.freeze({
     id: spec.id,
     inputs: Object.freeze([...(spec.inputs ?? [])]),
-    slotCost: spec.slotCost ?? 0,
-    instanceCost: spec.instanceCost ?? 0,
+    slotCost,
+    instanceCost,
     evaluate: spec.evaluate,
   });
 }
@@ -147,10 +156,13 @@ function solveGraph({ graph, target, budget, context = {} }) {
     if (node.slotCost > 0) state.slots += node.slotCost;
     if (node.instanceCost > 0) state.instances += node.instanceCost;
 
-    const values = Object.fromEntries(
+    const values = Object.freeze(Object.fromEntries(
       Object.entries(inputs).map(([inputId, result]) => [inputId, result.value]),
-    );
-    const value = node.evaluate({ inputs: values, context, state });
+    ));
+
+    // Evaluators receive resolved inputs and caller context only. Solver budget
+    // bookkeeping remains private kernel custody.
+    const value = node.evaluate(Object.freeze({ inputs: values, context }));
     const result = resolved(node, value);
     memo.set(id, result);
     trace.push(result);
