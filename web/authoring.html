@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/card-editor.css">
   <link rel="stylesheet" href="/pack-editor.css">
   <link rel="stylesheet" href="/resolution-editor.css">
+  <link rel="stylesheet" href="/document-editor.css">
 </head>
 <body>
   <main class="shell">
@@ -118,6 +119,17 @@
           <p id="resolutionStatus" class="muted resolution-status">A bounded stop is evidence, not invalid world state.</p>
         </section>
 
+        <details id="documentWorkshop" class="document-workshop">
+          <summary><span><b>Authoring Document</b><small>portable Card + Pack truth · runtime state excluded</small></span></summary>
+          <div class="document-toolbar">
+            <button id="reloadDocument" type="button">Export current</button>
+            <button id="importDocument" type="button">Validate + import</button>
+            <span id="documentMeta" class="document-meta"></span>
+          </div>
+          <textarea id="documentText" spellcheck="false" aria-label="Authoring Document JSON"></textarea>
+          <p id="documentStatus" class="muted document-status">Serialize meaning, not realization.</p>
+        </details>
+
         <div id="semantic" class="semantic"></div>
         <div id="graphWrap" class="graph-wrap" hidden>
           <div class="graph-toolbar">
@@ -153,5 +165,6 @@
   <script src="/card-editor.js" defer></script>
   <script src="/pack-editor.js" defer></script>
   <script src="/resolution-editor.js" defer></script>
+  <script src="/document-editor.js" defer></script>
 </body>
 </html>

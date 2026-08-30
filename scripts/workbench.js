@@ -49,6 +49,21 @@ function serveFile(res, filename, contentType) {
     return send(res, 200, body, contentType);
   });
 }
+function readBody(req, limit = 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.setEncoding('utf8');
+    req.on('data', (chunk) => {
+      body += chunk;
+      if (body.length > limit) {
+        reject(new Error('request body exceeds 1 MiB Authoring Document limit'));
+        req.destroy();
+      }
+    });
+    req.on('end', () => resolve(body));
+    req.on('error', reject);
+  });
+}
 
 function applySimulationAction(session, url) {
   const action = url.pathname.slice('/api/simulation/'.length);
@@ -104,6 +119,13 @@ function createWorkbenchServer({
     try {
       const url = new URL(req.url, 'http://localhost');
       if (url.pathname === '/api/world') return sendJson(res, 200, resolveWorld(parseWorldRequest(url)));
+      if (url.pathname === '/api/authoring/document' && req.method === 'GET') return sendJson(res, 200, authoring.exportDocument());
+      if (url.pathname === '/api/authoring/document.txt' && req.method === 'GET') return send(res, 200, authoring.serializeDocument(), 'application/json');
+      if (url.pathname === '/api/authoring/document' && req.method === 'POST') {
+        return readBody(req)
+          .then((body) => sendJson(res, 200, authoring.importDocument(body)))
+          .catch((error) => sendJson(res, 400, { error: error.message }));
+      }
       if (url.pathname === '/api/authoring') {
         const requestedSeed = integerParam(url.searchParams, 'seed', authoring.seed);
         if (requestedSeed !== authoring.seed) return sendJson(res, 200, authoring.reset(requestedSeed));
@@ -122,10 +144,12 @@ function createWorkbenchServer({
       if (url.pathname === '/card-editor.js') return serveFile(res, 'card-editor.js', 'text/javascript');
       if (url.pathname === '/pack-editor.js') return serveFile(res, 'pack-editor.js', 'text/javascript');
       if (url.pathname === '/resolution-editor.js') return serveFile(res, 'resolution-editor.js', 'text/javascript');
+      if (url.pathname === '/document-editor.js') return serveFile(res, 'document-editor.js', 'text/javascript');
       if (url.pathname === '/authoring.css') return serveFile(res, 'authoring.css', 'text/css');
       if (url.pathname === '/card-editor.css') return serveFile(res, 'card-editor.css', 'text/css');
       if (url.pathname === '/pack-editor.css') return serveFile(res, 'pack-editor.css', 'text/css');
       if (url.pathname === '/resolution-editor.css') return serveFile(res, 'resolution-editor.css', 'text/css');
+      if (url.pathname === '/document-editor.css') return serveFile(res, 'document-editor.css', 'text/css');
       if (url.pathname === '/app.js') return serveFile(res, 'app.js', 'text/javascript');
       if (url.pathname === '/style.css') return serveFile(res, 'style.css', 'text/css');
       return send(res, 404, 'not found', 'text/plain');
@@ -144,9 +168,10 @@ function main() {
     console.log(`Small World workbench: http://127.0.0.1:${address.port}`);
     console.log(`Authoring & Resolution: http://127.0.0.1:${address.port}/authoring`);
     console.log('Card and Pack edits change authored revision; Hops / Slots / Instances change only resolution revision.');
+    console.log('Authoring Document export/import is plain-data JSON and excludes runtime/lifecycle state.');
     console.log('Press Ctrl+C to stop.');
   });
 }
 
 if (require.main === module) main();
-module.exports = { createWorkbenchServer, parseWorldRequest, integerParam, numberParam, textParam, applySimulationAction, applyAuthoringAction };
+module.exports = { createWorkbenchServer, parseWorldRequest, integerParam, numberParam, textParam, readBody, applySimulationAction, applyAuthoringAction };
