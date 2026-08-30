@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Small World — Authoring & Resolution</title>
+  <link rel="stylesheet" href="/authoring.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">M0.7 · typed tuple graph foundation</p>
+        <h1>Authoring & Resolution</h1>
+        <p class="subtitle">Edit Card / Pack → Graph → bounded Resolution → World</p>
+      </div>
+      <div class="header-actions">
+        <label>Seed <input id="seed" type="number" min="0" value="93208"></label>
+        <button id="reload" type="button">Reset draft</button>
+        <a href="/">World</a>
+      </div>
+    </header>
+
+    <nav class="modes" aria-label="Projection">
+      <button type="button" data-mode="card" class="active">Card</button>
+      <button type="button" data-mode="pack">Pack</button>
+      <button type="button" data-mode="graph">Graph</button>
+      <button type="button" data-mode="resolution">Resolution</button>
+      <button type="button" data-mode="world">World</button>
+    </nav>
+
+    <section class="workspace">
+      <section class="main-panel">
+        <div class="panel-heading">
+          <div>
+            <p id="modeKind" class="eyebrow">Card</p>
+            <h2 id="modeTitle">Dragon</h2>
+          </div>
+          <div id="metrics" class="metrics"></div>
+        </div>
+        <div id="semantic" class="semantic"></div>
+        <div id="graphWrap" class="graph-wrap" hidden>
+          <div class="graph-toolbar">
+            <span>Tuple families</span>
+            <label><input type="checkbox" data-family="structural" checked> structural</label>
+            <label><input type="checkbox" data-family="authoring" checked> authoring</label>
+            <label><input type="checkbox" data-family="constraint" checked> constraint</label>
+            <label><input type="checkbox" data-family="dynamic" checked> dynamic</label>
+            <label><input type="checkbox" data-family="derivation" checked> derivation</label>
+            <label><input type="checkbox" data-family="evidence" checked> evidence</label>
+          </div>
+          <div class="svg-scroll"><svg id="graph" viewBox="0 0 1200 760" role="img" aria-label="Typed tuple graph"></svg></div>
+        </div>
+      </section>
+
+      <aside class="inspector">
+        <p class="eyebrow">Inspector</p>
+        <div id="inspector"><p class="muted">Select a node or relation.</p></div>
+      </aside>
+    </section>
+
+    <footer class="legend">
+      <span><i class="dot structural"></i>Structure</span>
+      <span><i class="dot authoring"></i>Authoring</span>
+      <span><i class="dot constraint"></i>Requirement</span>
+      <span><i class="dot dynamic"></i>Signal / Influence</span>
+      <span><i class="dot derivation"></i>Resolution</span>
+      <span><i class="dot evidence"></i>Evidence</span>
+    </footer>
+  </main>
+  <script src="/authoring.js" defer></script>
+</body>
+</html>

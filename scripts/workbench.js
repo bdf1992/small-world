@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { resolveWorld, DEFAULTS } = require('../src/app/world');
 const { createSimulationSession } = require('../src/app/simulation');
+const { createAuthoringSession } = require('../src/app/authoring-session');
 
 const WEB_ROOT = path.join(__dirname, '..', 'web');
 
@@ -13,6 +14,20 @@ function integerParam(searchParams, name, fallback) {
   if (raw === null || raw === '') return fallback;
   const value = Number(raw);
   if (!Number.isInteger(value) || value < 0) throw new Error(`${name} must be a non-negative integer`);
+  return value;
+}
+
+function numberParam(searchParams, name) {
+  const raw = searchParams.get(name);
+  if (raw === null || raw === '') throw new Error(`${name} is required`);
+  const value = Number(raw);
+  if (!Number.isFinite(value)) throw new Error(`${name} must be finite`);
+  return value;
+}
+
+function textParam(searchParams, name) {
+  const value = searchParams.get(name);
+  if (!value) throw new Error(`${name} is required`);
   return value;
 }
 
@@ -69,12 +84,44 @@ function applySimulationAction(session, url) {
   throw new Error(`unknown simulation action: ${action}`);
 }
 
-function createWorkbenchServer({ simulation = createSimulationSession({ seed: DEFAULTS.seed }) } = {}) {
+function applyAuthoringAction(session, url) {
+  const action = url.pathname.slice('/api/authoring/'.length);
+  if (!action || action === 'snapshot') return session.snapshot();
+  if (action === 'reset') return session.reset(integerParam(url.searchParams, 'seed', session.seed));
+  if (action === 'set-weight') {
+    return session.setWeight({
+      target: textParam(url.searchParams, 'target'),
+      field: textParam(url.searchParams, 'field'),
+      candidate: textParam(url.searchParams, 'candidate'),
+      weight: numberParam(url.searchParams, 'weight'),
+    });
+  }
+  if (action === 'set-affinity') {
+    return session.setAffinity({
+      field: url.searchParams.get('field') ?? 'element',
+      affinity: textParam(url.searchParams, 'affinity'),
+    });
+  }
+  throw new Error(`unknown authoring action: ${action}`);
+}
+
+function createWorkbenchServer({
+  simulation = createSimulationSession({ seed: DEFAULTS.seed }),
+  authoring = createAuthoringSession({ seed: DEFAULTS.seed }),
+} = {}) {
   return http.createServer((req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost');
       if (url.pathname === '/api/world') {
         return sendJson(res, 200, resolveWorld(parseWorldRequest(url)));
+      }
+      if (url.pathname === '/api/authoring') {
+        const requestedSeed = integerParam(url.searchParams, 'seed', authoring.seed);
+        if (requestedSeed !== authoring.seed) return sendJson(res, 200, authoring.reset(requestedSeed));
+        return sendJson(res, 200, authoring.snapshot());
+      }
+      if (url.pathname.startsWith('/api/authoring/')) {
+        return sendJson(res, 200, applyAuthoringAction(authoring, url));
       }
       if (url.pathname === '/api/simulation') return sendJson(res, 200, simulation.snapshot());
       if (url.pathname.startsWith('/api/simulation/')) {
@@ -83,10 +130,13 @@ function createWorkbenchServer({ simulation = createSimulationSession({ seed: DE
       if (url.pathname === '/' || url.pathname === '/index.html') {
         return serveFile(res, 'parity.html', 'text/html');
       }
+      if (url.pathname === '/authoring') return serveFile(res, 'authoring.html', 'text/html');
       if (url.pathname === '/classic') return serveFile(res, 'index.html', 'text/html');
       if (url.pathname === '/parity.js') return serveFile(res, 'parity.js', 'text/javascript');
       if (url.pathname === '/inspector.js') return serveFile(res, 'inspector.js', 'text/javascript');
       if (url.pathname === '/parity.css') return serveFile(res, 'parity.css', 'text/css');
+      if (url.pathname === '/authoring.js') return serveFile(res, 'authoring.js', 'text/javascript');
+      if (url.pathname === '/authoring.css') return serveFile(res, 'authoring.css', 'text/css');
       if (url.pathname === '/app.js') return serveFile(res, 'app.js', 'text/javascript');
       if (url.pathname === '/style.css') return serveFile(res, 'style.css', 'text/css');
       return send(res, 404, 'not found', 'text/plain');
@@ -102,8 +152,9 @@ function main() {
   const server = createWorkbenchServer();
   server.listen(port, '127.0.0.1', () => {
     const address = server.address();
-    console.log(`Small World parity workbench: http://127.0.0.1:${address.port}`);
-    console.log('The legacy M0.5 mechanics are behind the application session; browser code owns presentation only.');
+    console.log(`Small World workbench: http://127.0.0.1:${address.port}`);
+    console.log(`Authoring & Resolution: http://127.0.0.1:${address.port}/authoring`);
+    console.log('Card/Pack draft edits recompile through the same bounded world resolver.');
     console.log('Press Ctrl+C to stop.');
   });
 }
@@ -114,5 +165,8 @@ module.exports = {
   createWorkbenchServer,
   parseWorldRequest,
   integerParam,
+  numberParam,
+  textParam,
   applySimulationAction,
+  applyAuthoringAction,
 };

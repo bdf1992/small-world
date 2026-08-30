@@ -68,8 +68,8 @@ function createStartingRegions(seed) {
   return { biomeInstances, regionGraph: createRegionGraph(regions) };
 }
 
-function createArtifactVirtual(templateId, { region, prefix, slot }) {
-  const template = templates[templateId];
+function createArtifactVirtual(templateId, { region, prefix, slot, templateRegistry = templates }) {
+  const template = templateRegistry[templateId];
   if (!template) throw new Error(`unknown template: ${templateId}`);
 
   if (templateId === 'persona.dragon') {
@@ -77,8 +77,9 @@ function createArtifactVirtual(templateId, { region, prefix, slot }) {
       id: `${prefix}.${slot}.${templateId}`,
       boundary: { pack: prefix, slot, region: region.id },
       context: { region },
+      template,
     });
-    return virtualizeDragon(reference);
+    return virtualizeDragon(reference, template);
   }
 
   const reference = referenceTemplate(template, {
@@ -89,14 +90,14 @@ function createArtifactVirtual(templateId, { region, prefix, slot }) {
   return virtualizeSimple(template, reference);
 }
 
-function realizeArtifactVirtual(virtual, seed) {
-  const template = templates[virtual.templateId];
+function realizeArtifactVirtual(virtual, seed, templateRegistry = templates) {
+  const template = templateRegistry[virtual.templateId];
   if (!template) throw new Error(`unknown virtual template: ${virtual.templateId}`);
-  if (virtual.templateId === 'persona.dragon') return realizeDragon(virtual, seed);
+  if (virtual.templateId === 'persona.dragon') return realizeDragon(virtual, seed, template);
   return realizeSimple(template, virtual, seed);
 }
 
-function situationNodes({ prefix, packTemplate, region, seed }) {
+function situationNodes({ prefix, packTemplate, region, seed, templateRegistry = templates }) {
   const regionId = `${prefix}.region`;
   const packReferenceId = `${prefix}.pack.reference`;
   const packVirtualId = `${prefix}.pack.virtual`;
@@ -143,6 +144,7 @@ function situationNodes({ prefix, packTemplate, region, seed }) {
         region: inputs[regionId],
         prefix,
         slot,
+        templateRegistry,
       }),
     }));
 
@@ -150,7 +152,7 @@ function situationNodes({ prefix, packTemplate, region, seed }) {
       id: instanceId,
       inputs: [virtualId],
       instanceCost: 1,
-      evaluate: ({ inputs }) => realizeArtifactVirtual(inputs[virtualId], seed),
+      evaluate: ({ inputs }) => realizeArtifactVirtual(inputs[virtualId], seed, templateRegistry),
     }));
   }
 
@@ -181,19 +183,22 @@ function situationNodes({ prefix, packTemplate, region, seed }) {
   return { nodes, situationId, regionId };
 }
 
-function createHorizontalWorld(seed = 93208) {
+function createHorizontalWorld(seed = 93208, options = {}) {
   const { biomeInstances, regionGraph } = createStartingRegions(seed);
+  const templateRegistry = options.templateRegistry ?? templates;
+  const packTemplateOverrides = options.packTemplateOverrides ?? {};
+  const pack = (id, fallback) => packTemplateOverrides[id] ?? templateRegistry[id] ?? fallback;
   const bindings = [
-    { prefix: 'swamp.cave', region: regionGraph.byId.get('swamp'), packTemplate: caveTemplate },
-    { prefix: 'desert.ruin', region: regionGraph.byId.get('desert'), packTemplate: ruinTemplate },
-    { prefix: 'mountains.spire', region: regionGraph.byId.get('mountains'), packTemplate: spireTemplate },
+    { prefix: 'swamp.cave', region: regionGraph.byId.get('swamp'), packTemplate: pack('pack.cave', caveTemplate) },
+    { prefix: 'desert.ruin', region: regionGraph.byId.get('desert'), packTemplate: pack('pack.ruin', ruinTemplate) },
+    { prefix: 'mountains.spire', region: regionGraph.byId.get('mountains'), packTemplate: pack('pack.spire', spireTemplate) },
   ];
 
   const allNodes = [];
   const situationIds = [];
   const regionIds = [];
   for (const binding of bindings) {
-    const built = situationNodes({ ...binding, seed });
+    const built = situationNodes({ ...binding, seed, templateRegistry });
     allNodes.push(...built.nodes);
     situationIds.push(built.situationId);
     regionIds.push(built.regionId);

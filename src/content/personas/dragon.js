@@ -55,45 +55,55 @@ function normalize(weights) {
   return Object.fromEntries(Object.entries(weights).map(([key, value]) => [key, Math.max(0, value) / total]));
 }
 
-function referenceDragon({ id = 'dragon-reference', boundary = {}, context = {} } = {}) {
-  return createReference(dragonTemplate, { id, boundary, context });
+function affinityMultiplier(affinity) {
+  if (affinity === 'strong') return 3.0;
+  if (affinity === 'weak') return 1.1;
+  return 2.0;
 }
 
-function virtualizeDragon(reference) {
+function referenceDragon({ id = 'dragon-reference', boundary = {}, context = {}, template = dragonTemplate } = {}) {
+  return createReference(template, { id, boundary, context });
+}
+
+function virtualizeDragon(reference, template = dragonTemplate) {
+  if (reference?.templateId !== template.id) throw new Error('Dragon reference/template mismatch');
   const regionAttributes = reference.context?.region?.attributes ?? {};
-  const elementWeights = normalize(Object.fromEntries(ELEMENTS.map((element) => {
+  const elementSpec = template.priors?.element ?? { source: 'context', affinity: 'strong', domain: ELEMENTS };
+  const domain = elementSpec.domain ?? ELEMENTS;
+  const multiplier = affinityMultiplier(elementSpec.affinity);
+  const elementWeights = normalize(Object.fromEntries(domain.map((element) => {
     const contextual = regionAttributes[element] ?? 0;
-    return [element, 0.20 + contextual * 3.0];
+    return [element, 0.20 + contextual * multiplier];
   })));
 
   return createVirtual(reference, {
     id: `${reference.id}@dragon`,
-    fixed: dragonTemplate.fixed,
+    fixed: template.fixed,
     possibilities: {
       element: elementWeights,
-      rarity: dragonTemplate.priors.rarity,
-      age: dragonTemplate.priors.age,
-      temperament: dragonTemplate.priors.temperament,
+      rarity: template.priors.rarity,
+      age: template.priors.age,
+      temperament: template.priors.temperament,
     },
     ranges: {
       constitution: [30, 49],
       elementalOutput: [25, 43],
       movement: [4, 8],
     },
-    slots: {
-      hourglass: { state: 'virtual', accepts: 'Hourglass' },
-      inventory: { state: 'virtual', accepts: 'Artifact', count: '0..N' },
-    },
+    slots: Object.fromEntries(Object.entries(template.slots ?? {}).map(([name, spec]) => [name, {
+      state: 'virtual',
+      ...spec,
+    }])),
     lineage: [
-      { stage: 'definition', id: personaDefinition.id },
-      { stage: 'template', id: dragonTemplate.id },
+      { stage: 'definition', id: template.definitionId },
+      { stage: 'template', id: template.id },
       { stage: 'reference', id: reference.id },
     ],
   });
 }
 
-function realizeDragon(virtual, seed) {
-  if (virtual?.stage !== 'virtual' || virtual.templateId !== dragonTemplate.id) {
+function realizeDragon(virtual, seed, template = dragonTemplate) {
+  if (virtual?.stage !== 'virtual' || virtual.templateId !== template.id) {
     throw new Error('realizeDragon requires a Dragon virtual');
   }
 
@@ -114,7 +124,7 @@ function realizeDragon(virtual, seed) {
   return createInstance(virtual, {
     id: `dragon-${suffix}`,
     properties: {
-      species: 'Dragon',
+      species: template.fixed.species ?? 'Dragon',
       age,
       temperament,
     },

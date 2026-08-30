@@ -17,10 +17,13 @@ function titleCase(value) {
 }
 
 function labelFor(value, fallback = 'Object') {
+  const persona = value?.grammar === 'Artifact/Persona';
   return value?.packForm
     ?? value?.properties?.species
-    ?? value?.properties?.form
     ?? value?.fixed?.species
+    ?? (persona ? value?.properties?.role : null)
+    ?? (persona ? value?.fixed?.role : null)
+    ?? value?.properties?.form
     ?? value?.fixed?.form
     ?? (value?.templateId ? titleCase(value.templateId.split('.').pop()) : null)
     ?? fallback;
@@ -240,9 +243,9 @@ function projectWorld({ compiled, solve }) {
   });
 }
 
-function resolveWorld(request = {}) {
+function resolveWorld(request = {}, options = {}) {
   const { seed, budget } = normalizeRequest(request);
-  const compiled = createHorizontalWorld(seed);
+  const compiled = createHorizontalWorld(seed, options.horizontalWorld ?? {});
   const solve = solveGraph({
     graph: compiled.graph,
     target: compiled.target,
@@ -259,6 +262,7 @@ function resolveWorld(request = {}) {
 module.exports = {
   DEFAULTS,
   normalizeRequest,
+  projectWorld,
   resolveWorld,
   objectKey,
 };
