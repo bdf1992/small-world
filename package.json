@@ -1,12 +1,12 @@
 {
   "name": "small-world",
-  "version": "0.7.0-alpha.8",
+  "version": "0.7.0-alpha.9",
   "private": true,
   "description": "Bounded generative-world architecture lab for Catalyst Core",
   "scripts": {
     "world": "node scripts/world.js",
     "workbench": "node scripts/workbench.js",
-    "test": "node tests/m0.5-baseline.test.js && node tests/dragon-lifecycle.test.js && node tests/dag-solver.test.js && node tests/horizontal-world.test.js && node tests/instruments.test.js && node tests/inspection.test.js && node tests/certification.test.js && node tests/owner-qa.test.js && node tests/app-interface.test.js && node tests/parity-restoration.test.js && node --check web/parity.js && node --check web/inspector.js && node tests/workbench-parity-http.test.js && node tests/tuple-graph.test.js && node tests/authoring-edit.test.js && node tests/card-library.test.js && node tests/card-authoring-session.test.js && node --check web/authoring.js && node --check web/card-editor.js && node tests/authoring-workbench.test.js && node tests/card-authoring-http.test.js && node tests/pack-circuit.test.js && node --check web/pack-editor.js && node tests/pack-circuit-http.test.js && node tests/resolution-frontier.test.js && node --check web/resolution-editor.js && node tests/resolution-frontier-http.test.js && node tests/authoring-document.test.js && node --check web/document-editor.js && node tests/authoring-document-http.test.js && node tests/world-lineage.test.js && node --check web/world-lineage.js && node tests/world-lineage-http.test.js && node tests/visual-language.test.js && node --check web/world-language.js && node tests/visual-language-http.test.js && node tests/m0.7-owner-qa.test.js && node tests/generative-token-model.test.js",
+    "test": "node tests/m0.5-baseline.test.js && node tests/dragon-lifecycle.test.js && node tests/dag-solver.test.js && node tests/horizontal-world.test.js && node tests/instruments.test.js && node tests/inspection.test.js && node tests/certification.test.js && node tests/owner-qa.test.js && node tests/app-interface.test.js && node tests/parity-restoration.test.js && node --check web/parity.js && node --check web/inspector.js && node tests/workbench-parity-http.test.js && node tests/tuple-graph.test.js && node tests/authoring-edit.test.js && node tests/card-library.test.js && node tests/card-authoring-session.test.js && node --check web/authoring.js && node --check web/card-editor.js && node tests/authoring-workbench.test.js && node tests/card-authoring-http.test.js && node tests/pack-circuit.test.js && node --check web/pack-editor.js && node tests/pack-circuit-http.test.js && node tests/resolution-frontier.test.js && node --check web/resolution-editor.js && node tests/resolution-frontier-http.test.js && node tests/authoring-document.test.js && node --check web/document-editor.js && node tests/authoring-document-http.test.js && node tests/world-lineage.test.js && node --check web/world-lineage.js && node tests/world-lineage-http.test.js && node tests/visual-language.test.js && node --check web/world-language.js && node tests/visual-language-http.test.js && node tests/m0.7-owner-qa.test.js && node tests/generative-token-model.test.js && node --check web/studio.js && node tests/studio-ux.test.js",
     "verify:m0.5": "node tests/m0.5-baseline.test.js",
     "verify:dragon": "node tests/dragon-lifecycle.test.js",
     "verify:dag": "node tests/dag-solver.test.js",
@@ -25,7 +25,8 @@
     "verify:lineage": "node tests/world-lineage.test.js && node --check web/world-lineage.js && node tests/world-lineage-http.test.js",
     "verify:visual": "node tests/visual-language.test.js && node --check web/world-language.js && node tests/visual-language-http.test.js",
     "verify:m0.7-rc": "node tests/m0.7-owner-qa.test.js",
-    "verify:tokens": "node tests/generative-token-model.test.js"
+    "verify:tokens": "node tests/generative-token-model.test.js",
+    "verify:studio": "node --check web/studio.js && node tests/studio-ux.test.js"
   },
   "engines": {
     "node": ">=20"
