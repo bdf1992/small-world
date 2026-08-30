@@ -1,9 +1,6 @@
 'use strict';
 
-const { createSolveBudget } = require('../src/kernel/budget');
-const { solveGraph } = require('../src/kernel/dag');
-const { createHorizontalWorld } = require('../src/runtime/horizontal-world');
-const { inspectWorld } = require('../src/inspect/inspect');
+const { resolveWorld } = require('../src/app/world');
 
 function readInt(argv, name, fallback) {
   const index = argv.indexOf(`--${name}`);
@@ -24,56 +21,52 @@ function formatField(attributes = {}) {
 
 function main(argv = process.argv.slice(2)) {
   const seed = readInt(argv, 'seed', 93208);
-  const budgetSpec = {
+  const budget = {
     maxHops: readInt(argv, 'hops', 4),
     maxSlots: readInt(argv, 'slots', 6),
     maxInstances: readInt(argv, 'instances', 9),
   };
-
-  const compiled = createHorizontalWorld(seed);
-  const budget = createSolveBudget(budgetSpec);
-  const solve = solveGraph({ graph: compiled.graph, target: compiled.target, budget });
+  const view = resolveWorld({ seed, budget });
 
   console.log('Small World — M0.6 owner QA');
-  console.log(`seed=${seed}  hops=${budget.maxHops}  slots=${budget.maxSlots}  instances=${budget.maxInstances}`);
-  console.log(`status=${solve.result.state}  usage=h${solve.usage.maxHopReached}/s${solve.usage.slots}/i${solve.usage.instances}`);
+  console.log(`seed=${view.seed}  hops=${view.budget.maxHops}  slots=${view.budget.maxSlots}  instances=${view.budget.maxInstances}`);
+  console.log(`status=${view.status}  usage=h${view.usage.maxHopReached}/s${view.usage.slots}/i${view.usage.instances}`);
   console.log('');
   console.log('REGIONS');
-  for (const region of compiled.regionGraph.byId.values()) {
-    console.log(`- ${region.id} -> [${region.boundary.neighbors.join(', ')}]`);
-    console.log(`  field: ${formatField(region.attributes)}`);
+
+  for (const region of view.map.regions) {
+    console.log(`- ${region.id} -> [${region.neighbors.join(', ')}]`);
+    console.log(`  field: ${formatField(region.field)}`);
   }
 
-  if (solve.result.state === 'resolved') {
-    const view = inspectWorld(solve.result.value);
+  if (view.status === 'resolved') {
     console.log('');
     console.log('SITUATIONS');
-    for (const situation of view.situations) {
-      const members = Object.entries(situation.members)
-        .map(([slot, member]) => `${slot}=${member.templateId}`)
-        .join(', ');
-      console.log(`- ${situation.regionId}: ${situation.packForm} (${members})`);
+    for (const region of view.map.regions) {
+      for (const child of region.children) {
+        const situation = view.objects[child.key];
+        const members = situation.children.map((member) => `${member.role}=${view.objects[member.key].facts.templateId}`).join(', ');
+        console.log(`- ${region.id}: ${situation.label} (${members})`);
+      }
     }
   } else {
-    const virtuals = solve.trace
-      .filter((entry) => entry.state === 'resolved' && entry.value?.stage === 'virtual')
-      .map((entry) => entry.value);
     console.log('');
     console.log('RESOLVED VIRTUALS');
-    if (!virtuals.length) console.log('- none within this budget');
-    for (const virtual of virtuals) {
-      const possibilityKeys = Object.keys(virtual.possibilities ?? {});
-      const slotKeys = Object.keys(virtual.slots ?? {});
+    if (!view.unresolved.length) console.log('- none within this budget');
+    for (const key of view.unresolved) {
+      const virtual = view.objects[key];
+      const possibilityKeys = Object.keys(virtual.possibilities?.possibilities ?? {});
+      const slotKeys = Object.keys(virtual.possibilities?.slots ?? {});
       console.log(`- ${virtual.id} [${virtual.grammar}] possibilities=[${possibilityKeys.join(', ')}] slots=[${slotKeys.join(', ')}]`);
     }
   }
 
   console.log('');
   console.log('FRONTIER / STOPS');
-  if (!solve.stops.length) console.log('- none');
-  for (const stop of solve.stops) {
+  if (!view.stops.length) console.log('- none');
+  for (const stop of view.stops) {
     const detail = Object.entries(stop)
-      .filter(([key]) => !['reason'].includes(key))
+      .filter(([key]) => key !== 'reason')
       .map(([key, value]) => `${key}=${value}`)
       .join(' ');
     console.log(`- ${stop.reason}${detail ? ` ${detail}` : ''}`);
