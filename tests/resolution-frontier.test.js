@@ -10,11 +10,13 @@ function stableTuples(graph) {
 function main() {
   const session = createResolutionAuthoringSession({ seed: 93208 });
   const initial = session.snapshot();
-  assert.strictEqual(initial.projectionVersion, 5);
+  assert.strictEqual(initial.projectionVersion, 6);
   assert.strictEqual(initial.revision, 0);
   assert.strictEqual(initial.resolutionRevision, 0);
   assert.strictEqual(initial.resolution.complete, true);
   assert.strictEqual(initial.views.world.status, 'resolved');
+  assert.strictEqual(initial.views.landing.type, 'WorldLanding');
+  assert.strictEqual(initial.landing.traceable.length, 6);
 
   const cardTruth = stableTuples(initial.views.card);
   const packTruth = stableTuples(initial.views.pack);
@@ -30,6 +32,7 @@ function main() {
   assert.strictEqual(stableTuples(virtualOnly.views.pack), packTruth, 'Pack tuples changed under runtime budget');
   assert.ok(virtualOnly.views.resolution.tuples.some((tuple) => tuple.predicate === 'blocked-by' && tuple.object === 'budget.maxInstances'));
   assert.ok(virtualOnly.views.resolution.tuples.some((tuple) => tuple.subject === 'resolution.frontier' && tuple.predicate === 'contains'));
+  assert.deepStrictEqual(virtualOnly.landing.traceable, [], 'Virtual-only resolution must not create landed Instance traces');
 
   const slotLimited = session.setBudget({ maxInstances: 9, maxSlots: 3 });
   assert.strictEqual(slotLimited.revision, 0);
@@ -51,6 +54,7 @@ function main() {
   assert.deepStrictEqual(full.resolution.stops, []);
   assert.strictEqual(stableTuples(full.views.card), cardTruth);
   assert.strictEqual(stableTuples(full.views.pack), packTruth);
+  assert.strictEqual(full.landing.traceable.length, 6, 'full budget should restore landed traces');
 
   const authored = session.cloneCard({ cardId: 'persona.dragon', newId: 'persona.ice-dragon' });
   assert.strictEqual(authored.revision, 1);
@@ -65,9 +69,11 @@ function main() {
     virtualOnly: {
       stops: virtualOnly.resolution.stops.length,
       virtuals: virtualOnly.resolution.virtuals.length,
+      landed: virtualOnly.landing.traceable.length,
     },
     slotLimitedUsage: slotLimited.resolution.usage,
     fullState: full.resolution.state,
+    fullLanding: full.landing.traceable.length,
   }, null, 2));
 }
 
