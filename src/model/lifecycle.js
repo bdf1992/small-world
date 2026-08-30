@@ -66,7 +66,11 @@ function createVirtual(reference, possibility) {
 function createInstance(virtual, settled) {
   if (virtual?.stage !== 'virtual') throw new Error('instance requires a virtual');
   if (!settled?.id) throw new Error('instance requires id');
+
+  // Settled payload may contribute runtime facts, but lifecycle identity remains
+  // owned by this constructor and cannot be overridden by callers.
   return freeze({
+    ...settled,
     stage: 'instance',
     id: settled.id,
     virtualId: virtual.id,
@@ -74,7 +78,6 @@ function createInstance(virtual, settled) {
     templateId: virtual.templateId,
     definitionId: virtual.definitionId,
     grammar: virtual.grammar,
-    ...settled,
   });
 }
 
