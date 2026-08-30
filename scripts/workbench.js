@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { resolveWorld, DEFAULTS } = require('../src/app/world');
 const { createSimulationSession } = require('../src/app/simulation');
-const { createAuthoringProjection } = require('../src/app/authoring');
+const { createAuthoringSession } = require('../src/app/authoring-session');
 
 const WEB_ROOT = path.join(__dirname, '..', 'web');
 
@@ -14,6 +14,20 @@ function integerParam(searchParams, name, fallback) {
   if (raw === null || raw === '') return fallback;
   const value = Number(raw);
   if (!Number.isInteger(value) || value < 0) throw new Error(`${name} must be a non-negative integer`);
+  return value;
+}
+
+function numberParam(searchParams, name) {
+  const raw = searchParams.get(name);
+  if (raw === null || raw === '') throw new Error(`${name} is required`);
+  const value = Number(raw);
+  if (!Number.isFinite(value)) throw new Error(`${name} must be finite`);
+  return value;
+}
+
+function textParam(searchParams, name) {
+  const value = searchParams.get(name);
+  if (!value) throw new Error(`${name} is required`);
   return value;
 }
 
@@ -70,7 +84,31 @@ function applySimulationAction(session, url) {
   throw new Error(`unknown simulation action: ${action}`);
 }
 
-function createWorkbenchServer({ simulation = createSimulationSession({ seed: DEFAULTS.seed }) } = {}) {
+function applyAuthoringAction(session, url) {
+  const action = url.pathname.slice('/api/authoring/'.length);
+  if (!action || action === 'snapshot') return session.snapshot();
+  if (action === 'reset') return session.reset(integerParam(url.searchParams, 'seed', session.seed));
+  if (action === 'set-weight') {
+    return session.setWeight({
+      target: textParam(url.searchParams, 'target'),
+      field: textParam(url.searchParams, 'field'),
+      candidate: textParam(url.searchParams, 'candidate'),
+      weight: numberParam(url.searchParams, 'weight'),
+    });
+  }
+  if (action === 'set-affinity') {
+    return session.setAffinity({
+      field: url.searchParams.get('field') ?? 'element',
+      affinity: textParam(url.searchParams, 'affinity'),
+    });
+  }
+  throw new Error(`unknown authoring action: ${action}`);
+}
+
+function createWorkbenchServer({
+  simulation = createSimulationSession({ seed: DEFAULTS.seed }),
+  authoring = createAuthoringSession({ seed: DEFAULTS.seed }),
+} = {}) {
   return http.createServer((req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost');
@@ -78,9 +116,12 @@ function createWorkbenchServer({ simulation = createSimulationSession({ seed: DE
         return sendJson(res, 200, resolveWorld(parseWorldRequest(url)));
       }
       if (url.pathname === '/api/authoring') {
-        return sendJson(res, 200, createAuthoringProjection({
-          seed: integerParam(url.searchParams, 'seed', DEFAULTS.seed),
-        }));
+        const requestedSeed = integerParam(url.searchParams, 'seed', authoring.seed);
+        if (requestedSeed !== authoring.seed) return sendJson(res, 200, authoring.reset(requestedSeed));
+        return sendJson(res, 200, authoring.snapshot());
+      }
+      if (url.pathname.startsWith('/api/authoring/')) {
+        return sendJson(res, 200, applyAuthoringAction(authoring, url));
       }
       if (url.pathname === '/api/simulation') return sendJson(res, 200, simulation.snapshot());
       if (url.pathname.startsWith('/api/simulation/')) {
@@ -113,7 +154,7 @@ function main() {
     const address = server.address();
     console.log(`Small World workbench: http://127.0.0.1:${address.port}`);
     console.log(`Authoring & Resolution: http://127.0.0.1:${address.port}/authoring`);
-    console.log('World rules remain behind application ports; browser code owns presentation only.');
+    console.log('Card/Pack draft edits recompile through the same bounded world resolver.');
     console.log('Press Ctrl+C to stop.');
   });
 }
@@ -124,5 +165,8 @@ module.exports = {
   createWorkbenchServer,
   parseWorldRequest,
   integerParam,
+  numberParam,
+  textParam,
   applySimulationAction,
+  applyAuthoringAction,
 };
