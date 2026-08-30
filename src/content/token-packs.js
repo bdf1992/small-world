@@ -35,8 +35,8 @@ const TOKENS = Object.freeze({
   stat: createToken({ id: 'Stat', text: 'Stat', role: 'value-kind' }),
 });
 
-// Intentionally tiny. More Artifact kinds are data added later; Card.Artifact does not
-// become Card.Persona merely because Artifact.Persona is currently an admitted kind.
+// Intentionally tiny. More Artifact kinds are data added later; selecting an
+// Artifact kind does not create a second, type-specific Card.
 const ARTIFACT_KIND_PACK = createWeightedTokenPack({
   id: 'TokenPack.ArtifactKind',
   accepts: 'Artifact',
