@@ -34,6 +34,13 @@ function main() {
   assert.ok(['Young', 'Mature', 'Ancient'].includes(ice.facts.properties.age));
   assert.ok(['Dormant', 'Territorial', 'Hunting'].includes(ice.facts.properties.temperament));
   assert.ok(ice.possibilities.possibilities.element.Ground > 0);
+  assert.ok(snapshot.views.graph.tuples.some((tuple) =>
+    tuple.subject === 'pack.spire.slot.guardian' &&
+    tuple.predicate === 'bound-to' &&
+    tuple.object === 'persona.ice-dragon'));
+  assert.ok(snapshot.views.graph.tuples.some((tuple) =>
+    tuple.predicate === 'targets' &&
+    tuple.object === 'persona.ice-dragon.possibility.element'));
 
   snapshot = session.createCard({ grammar: 'Artifact/Item', id: 'item.frozen-crown' });
   snapshot = session.setCardFixed({ cardId: 'item.frozen-crown', field: 'form', value: 'Frozen Crown' });
@@ -50,6 +57,10 @@ function main() {
   snapshot = session.disconnectCard({ slot: 'guardian', cardId: 'persona.ice-dragon' });
   assert.ok(!Object.prototype.hasOwnProperty.call(snapshot.editor.pack.slots.guardian.candidates, 'persona.ice-dragon'));
   assert.strictEqual(guardian(snapshot).label, 'Dragon');
+  assert.ok(snapshot.views.graph.tuples.some((tuple) =>
+    tuple.subject === 'pack.spire.slot.guardian' &&
+    tuple.predicate === 'bound-to' &&
+    tuple.object === 'persona.dragon'));
 
   console.log(JSON.stringify({
     pass: true,
@@ -57,6 +68,7 @@ function main() {
     resolvedAuthoredGuardian: ice.label,
     resolvedTemplate: ice.facts.templateId,
     possibilityKeys: Object.keys(ice.possibilities.possibilities),
+    graphTracksWorld: true,
   }, null, 2));
 }
 
