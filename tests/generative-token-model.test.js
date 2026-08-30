@@ -11,7 +11,7 @@ const {
   resolveArtifactCard,
   one,
 } = require('../src/content/generative-authoring');
-const { TOKENS, ARTIFACT_KIND_PACK } = require('../src/content/token-packs');
+const { TOKENS, ARTIFACT_KIND_IDS, ARTIFACT_KIND_PACK } = require('../src/content/token-packs');
 
 function source(...parts) {
   return fs.readFileSync(path.join(__dirname, '..', ...parts), 'utf8');
@@ -35,14 +35,17 @@ function main() {
     ['Elements', 'Attributes', 'Properties', 'Stats'],
   );
 
-  assert.strictEqual(TOKENS.artifactPersona.id, 'Artifact.Persona');
+  assert.strictEqual(TOKENS['Artifact.Persona'].id, 'Artifact.Persona');
   assert.strictEqual(ARTIFACT_KIND_PACK.accepts, 'Artifact');
   assert.deepStrictEqual(
     ARTIFACT_KIND_PACK.entries.map((entry) => entry.token.id),
-    ['Artifact.Persona'],
+    ARTIFACT_KIND_IDS,
   );
+  assert.ok(ARTIFACT_KIND_IDS.includes('Artifact.Clock'));
+  assert.ok(ARTIFACT_KIND_IDS.includes('Artifact.Hourglass'));
 
   const card = createArtifactCard({
+    kind: one('Artifact.Persona'),
     elementCount: one(3),
     attributeCount: one(2),
     propertyCount: one(1),
@@ -107,10 +110,10 @@ function main() {
 
   console.log(JSON.stringify({
     pass: true,
-    invariant: 'Card.Artifact generates Artifact; Artifact.Persona is a type, not a Card',
+    invariant: 'Card.Artifact generates Artifact; Artifact kinds come from admitted relations, not matching Cards',
     universalShape: ['Elements', 'Attributes', 'Properties', 'Stats'],
     card: CARD_ARTIFACT.id,
-    admittedKinds: Object.keys(ARTIFACT_TYPES),
+    admittedKinds: ARTIFACT_KIND_IDS,
     proof: {
       kind: artifact.kind,
       counts: artifact.counts,
