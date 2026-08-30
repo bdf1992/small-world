@@ -8,14 +8,16 @@ const {
   createVirtual,
   createInstance,
 } = require('../model/lifecycle');
+const { TYPES, relationsTo } = require('../model/base-relations');
 const { ARTIFACT_KIND_PACK, weightsFor } = require('./token-packs');
 
 const ELEMENTS = Object.freeze(['Void', 'Fire', 'Chaos', 'Ground', 'Aether', 'Water', 'Order', 'Sky']);
+const GENERIC_CONTRACT = Object.freeze(['Elements', 'Attributes', 'Properties', 'Stats']);
 
 const artifactDefinition = createDefinition({
   id: 'Artifact',
   grammar: 'Artifact',
-  sections: ['Elements', 'Attributes', 'Properties', 'Stats'],
+  sections: GENERIC_CONTRACT,
   dimensions: {
     elements: { kind: 'Attribute', count: '1..8' },
     attributes: { kind: 'Attribute', count: '0..N' },
@@ -24,16 +26,23 @@ const artifactDefinition = createDefinition({
   },
 });
 
-// Artifact types are contracts over the generic Artifact shape. They do not imply
-// a matching Card. The first admitted type is intentionally minimal.
-const ARTIFACT_TYPES = Object.freeze({
-  'Artifact.Persona': Object.freeze({
-    kind: 'ArtifactType',
-    id: 'Artifact.Persona',
-    parent: 'Artifact',
-    contract: Object.freeze(['Elements', 'Attributes', 'Properties', 'Stats']),
-  }),
-});
+const typeById = Object.freeze(Object.fromEntries(
+  Object.values(TYPES).map((type) => [type.id, type]),
+));
+
+// Artifact types come from the admitted relation topology. A type contract does
+// not imply a matching Card; Card.Artifact remains the sole generator here.
+const ARTIFACT_TYPES = Object.freeze(Object.fromEntries(
+  relationsTo(TYPES.Artifact.id)
+    .filter((edge) => edge.predicate === 'is-a')
+    .map((edge) => [edge.subject, Object.freeze({
+      kind: 'ArtifactType',
+      id: edge.subject,
+      parent: TYPES.Artifact.id,
+      sourceGrammar: typeById[edge.subject]?.sourceGrammar ?? null,
+      contract: GENERIC_CONTRACT,
+    })]),
+));
 
 function one(value) { return { [String(value)]: 1 }; }
 function uniform(values) { return Object.fromEntries(values.map((value) => [String(value), 1])); }
@@ -156,6 +165,7 @@ function resolveArtifactCard(card = CARD_ARTIFACT, {
 
 module.exports = {
   ELEMENTS,
+  GENERIC_CONTRACT,
   artifactDefinition,
   ARTIFACT_TYPES,
   CARD_ARTIFACT,
