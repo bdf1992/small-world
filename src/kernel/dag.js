@@ -83,7 +83,6 @@ function solveGraph({ graph, target, budget, context = {} }) {
     if (memo.has(id)) return memo.get(id);
     const node = graph.byId.get(id);
     const hop = hops.get(id);
-    state.hops = Math.max(state.hops, hop);
 
     if (hop > budget.maxHops) {
       const record = stop(state, 'budget.maxHops', { nodeId: id, hop, limit: budget.maxHops });
@@ -92,6 +91,7 @@ function solveGraph({ graph, target, budget, context = {} }) {
       trace.push(result);
       return result;
     }
+    state.hops = Math.max(state.hops, hop);
 
     // Resolve upstream causes before applying materialization budgets. This means
     // maxInstances=0 can still produce a complete Virtual frontier rather than
