@@ -39,36 +39,21 @@ function createStartingRegions(seed) {
   };
 
   const regions = [
-    createRegion({
-      id: 'swamp',
-      extent: { measure: 1, unit: 'world-share' },
-      boundary: { neighbors: ['desert', 'mountains'] },
-      attributes: biomeInstances.swamp.attributes.field,
-      artifactId: biomeInstances.swamp.id,
-      slots: { situation: { count: 1 } },
-    }),
-    createRegion({
-      id: 'desert',
-      extent: { measure: 1, unit: 'world-share' },
-      boundary: { neighbors: ['swamp', 'mountains'] },
-      attributes: biomeInstances.desert.attributes.field,
-      artifactId: biomeInstances.desert.id,
-      slots: { situation: { count: 1 } },
-    }),
-    createRegion({
-      id: 'mountains',
-      extent: { measure: 1, unit: 'world-share' },
-      boundary: { neighbors: ['swamp', 'desert'] },
-      attributes: biomeInstances.mountains.attributes.field,
-      artifactId: biomeInstances.mountains.id,
-      slots: { situation: { count: 1 } },
-    }),
+    createRegion({ id: 'swamp', extent: { measure: 1, unit: 'world-share' }, boundary: { neighbors: ['desert', 'mountains'] }, attributes: biomeInstances.swamp.attributes.field, artifactId: biomeInstances.swamp.id, slots: { situation: { count: 1 } } }),
+    createRegion({ id: 'desert', extent: { measure: 1, unit: 'world-share' }, boundary: { neighbors: ['swamp', 'mountains'] }, attributes: biomeInstances.desert.attributes.field, artifactId: biomeInstances.desert.id, slots: { situation: { count: 1 } } }),
+    createRegion({ id: 'mountains', extent: { measure: 1, unit: 'world-share' }, boundary: { neighbors: ['swamp', 'desert'] }, attributes: biomeInstances.mountains.attributes.field, artifactId: biomeInstances.mountains.id, slots: { situation: { count: 1 } } }),
   ];
 
   return { biomeInstances, regionGraph: createRegionGraph(regions) };
 }
 
-function createArtifactVirtual(templateId, { region, prefix, slot, templateRegistry = templates }) {
+function createArtifactVirtual(templateId, {
+  region,
+  prefix,
+  slot,
+  templateRegistry = templates,
+  artifactRuntimeRegistry = {},
+}) {
   const template = templateRegistry[templateId];
   if (!template) throw new Error(`unknown template: ${templateId}`);
 
@@ -87,17 +72,28 @@ function createArtifactVirtual(templateId, { region, prefix, slot, templateRegis
     boundary: { pack: prefix, slot, region: region.id },
     region,
   });
+  const runtime = artifactRuntimeRegistry[templateId];
+  if (runtime?.virtualize) return runtime.virtualize(template, reference);
   return virtualizeSimple(template, reference);
 }
 
-function realizeArtifactVirtual(virtual, seed, templateRegistry = templates) {
+function realizeArtifactVirtual(virtual, seed, templateRegistry = templates, artifactRuntimeRegistry = {}) {
   const template = templateRegistry[virtual.templateId];
   if (!template) throw new Error(`unknown virtual template: ${virtual.templateId}`);
   if (virtual.templateId === 'persona.dragon') return realizeDragon(virtual, seed, template);
+  const runtime = artifactRuntimeRegistry[virtual.templateId];
+  if (runtime?.realize) return runtime.realize(template, virtual, seed);
   return realizeSimple(template, virtual, seed);
 }
 
-function situationNodes({ prefix, packTemplate, region, seed, templateRegistry = templates }) {
+function situationNodes({
+  prefix,
+  packTemplate,
+  region,
+  seed,
+  templateRegistry = templates,
+  artifactRuntimeRegistry = {},
+}) {
   const regionId = `${prefix}.region`;
   const packReferenceId = `${prefix}.pack.reference`;
   const packVirtualId = `${prefix}.pack.virtual`;
@@ -131,20 +127,14 @@ function situationNodes({ prefix, packTemplate, region, seed, templateRegistry =
       id: choiceId,
       inputs: [packVirtualId],
       slotCost: 1,
-      evaluate: ({ inputs }) => {
-        const slotSpec = inputs[packVirtualId].slots[slot];
-        return pickWeighted(seed, `${prefix}:${slot}:template`, slotSpec.candidates);
-      },
+      evaluate: ({ inputs }) => pickWeighted(seed, `${prefix}:${slot}:template`, inputs[packVirtualId].slots[slot].candidates),
     }));
 
     nodes.push(createNode({
       id: virtualId,
       inputs: [choiceId, regionId],
       evaluate: ({ inputs }) => createArtifactVirtual(inputs[choiceId], {
-        region: inputs[regionId],
-        prefix,
-        slot,
-        templateRegistry,
+        region: inputs[regionId], prefix, slot, templateRegistry, artifactRuntimeRegistry,
       }),
     }));
 
@@ -152,7 +142,7 @@ function situationNodes({ prefix, packTemplate, region, seed, templateRegistry =
       id: instanceId,
       inputs: [virtualId],
       instanceCost: 1,
-      evaluate: ({ inputs }) => realizeArtifactVirtual(inputs[virtualId], seed, templateRegistry),
+      evaluate: ({ inputs }) => realizeArtifactVirtual(inputs[virtualId], seed, templateRegistry, artifactRuntimeRegistry),
     }));
   }
 
@@ -163,10 +153,7 @@ function situationNodes({ prefix, packTemplate, region, seed, templateRegistry =
     instanceCost: 1,
     evaluate: ({ inputs }) => {
       const packVirtual = inputs[packVirtualId];
-      const members = Object.fromEntries(Object.keys(packTemplate.slots).map((slot, index) => [
-        slot,
-        inputs[instanceIds[index]],
-      ]));
+      const members = Object.fromEntries(Object.keys(packTemplate.slots).map((slot, index) => [slot, inputs[instanceIds[index]]]));
       const suffix = hash64(seed, prefix, 'situation').toString(16).padStart(16, '0').slice(-8);
       return createInstance(packVirtual, {
         id: `situation-${suffix}`,
@@ -186,6 +173,7 @@ function situationNodes({ prefix, packTemplate, region, seed, templateRegistry =
 function createHorizontalWorld(seed = 93208, options = {}) {
   const { biomeInstances, regionGraph } = createStartingRegions(seed);
   const templateRegistry = options.templateRegistry ?? templates;
+  const artifactRuntimeRegistry = options.artifactRuntimeRegistry ?? {};
   const packTemplateOverrides = options.packTemplateOverrides ?? {};
   const pack = (id, fallback) => packTemplateOverrides[id] ?? templateRegistry[id] ?? fallback;
   const bindings = [
@@ -198,7 +186,7 @@ function createHorizontalWorld(seed = 93208, options = {}) {
   const situationIds = [];
   const regionIds = [];
   for (const binding of bindings) {
-    const built = situationNodes({ ...binding, seed, templateRegistry });
+    const built = situationNodes({ ...binding, seed, templateRegistry, artifactRuntimeRegistry });
     allNodes.push(...built.nodes);
     situationIds.push(built.situationId);
     regionIds.push(built.regionId);
@@ -209,8 +197,7 @@ function createHorizontalWorld(seed = 93208, options = {}) {
     id: worldId,
     inputs: [...regionIds, ...situationIds],
     evaluate: ({ inputs }) => ({
-      kind: 'World',
-      seed,
+      kind: 'World', seed,
       regions: regionIds.map((id) => inputs[id]),
       situations: situationIds.map((id) => inputs[id]),
       biomeInstances,
@@ -224,9 +211,7 @@ function createHorizontalWorld(seed = 93208, options = {}) {
     regionGraph,
     biomeInstances,
     bindings: Object.freeze(bindings.map(({ prefix, region, packTemplate }) => Object.freeze({
-      prefix,
-      regionId: region.id,
-      packTemplateId: packTemplate.id,
+      prefix, regionId: region.id, packTemplateId: packTemplate.id,
     }))),
   });
 }
