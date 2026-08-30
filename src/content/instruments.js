@@ -48,9 +48,7 @@ const clockFaceDefinition = createDefinition({
   id: 'instrument.clock-face',
   grammar: 'Instrument/ClockFace',
   sections: ['regions', 'rules'],
-  dimensions: {
-    regionCount: { kind: 'property' },
-  },
+  dimensions: { regionCount: { kind: 'property' } },
 });
 
 const clockHandDefinition = createDefinition({
@@ -75,10 +73,7 @@ const hourDefinition = createDefinition({
 
 const standardClockTemplate = createTemplate(clockDefinition, {
   id: 'clock.standard',
-  fixed: {
-    positions: 12,
-    ticksPerCycle: 60,
-  },
+  fixed: { positions: 12, ticksPerCycle: 60 },
   priors: {
     orientation: { Day: 0.5, Night: 0.5 },
     advancePerTurn: { '1': 0.72, '2': 0.23, '3': 0.05 },
@@ -142,10 +137,7 @@ function realizeClock(virtual, seed) {
 
   return createInstance(virtual, {
     id: `clock-${suffix}`,
-    properties: {
-      ...virtual.fixed,
-      orientation,
-    },
+    properties: { ...virtual.fixed, orientation },
     stats: { advancePerTurn },
     state: { cycle: 0, tick: 0 },
     slots: virtual.slots,
@@ -165,9 +157,8 @@ function referenceHourglass({ id = 'hourglass.reference', ownerId, boundary = {}
 function virtualizeHourglass(reference) {
   return createVirtual(reference, {
     id: `${reference.id}@virtual`,
-    possibilities: {
-      rarity: standardHourglassTemplate.priors.rarity,
-    },
+    fixed: { ownerId: reference.context.ownerId },
+    possibilities: { rarity: standardHourglassTemplate.priors.rarity },
     ranges: {
       capacity: [60, 7200],
       crossingRate: [1, 4],
@@ -197,11 +188,7 @@ function realizeHourglass(virtual, seed) {
   return createInstance(virtual, {
     id: `hourglass-${suffix}`,
     properties: { rarity },
-    stats: {
-      capacity,
-      crossingRate,
-      integrity: 100,
-    },
+    stats: { capacity, crossingRate, integrity: 100 },
     state: {
       upper: { grain: 0 },
       neck: { crossing: 0 },
@@ -209,7 +196,7 @@ function realizeHourglass(virtual, seed) {
       timeless: { grain: 0 },
     },
     slots: virtual.slots,
-    ownerId: virtual.referenceId,
+    ownerId: virtual.fixed.ownerId,
     lineage: [...virtual.lineage, { stage: 'virtual', id: virtual.id }],
   });
 }
