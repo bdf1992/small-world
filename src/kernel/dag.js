@@ -55,23 +55,40 @@ function resolved(node, value) {
   return Object.freeze({ state: 'resolved', nodeId: node.id, value });
 }
 
+function shortestDependencyHops(graph, target) {
+  const hops = new Map([[target, 0]]);
+  const queue = [target];
+  while (queue.length) {
+    const id = queue.shift();
+    const nextHop = hops.get(id) + 1;
+    for (const input of graph.byId.get(id).inputs) {
+      if (!hops.has(input) || nextHop < hops.get(input)) {
+        hops.set(input, nextHop);
+        queue.push(input);
+      }
+    }
+  }
+  return hops;
+}
+
 function solveGraph({ graph, target, budget, context = {} }) {
   if (!graph?.byId) throw new Error('solveGraph requires graph');
   if (!graph.byId.has(target)) throw new Error(`unknown target: ${target}`);
   const state = createBudgetState(budget);
+  const hops = shortestDependencyHops(graph, target);
   const memo = new Map();
   const trace = [];
 
-  function resolveNode(id, hop) {
-    const cacheKey = `${id}@${hop}`;
-    if (memo.has(cacheKey)) return memo.get(cacheKey);
+  function resolveNode(id) {
+    if (memo.has(id)) return memo.get(id);
     const node = graph.byId.get(id);
+    const hop = hops.get(id);
     state.hops = Math.max(state.hops, hop);
 
     if (hop > budget.maxHops) {
       const record = stop(state, 'budget.maxHops', { nodeId: id, hop, limit: budget.maxHops });
       const result = unresolved(node, record.reason, { hop, limit: budget.maxHops });
-      memo.set(cacheKey, result);
+      memo.set(id, result);
       trace.push(result);
       return result;
     }
@@ -88,7 +105,7 @@ function solveGraph({ graph, target, budget, context = {} }) {
         used: state.slots,
         limit: budget.maxSlots,
       });
-      memo.set(cacheKey, result);
+      memo.set(id, result);
       trace.push(result);
       return result;
     }
@@ -105,13 +122,13 @@ function solveGraph({ graph, target, budget, context = {} }) {
         used: state.instances,
         limit: budget.maxInstances,
       });
-      memo.set(cacheKey, result);
+      memo.set(id, result);
       trace.push(result);
       return result;
     }
 
     const inputs = Object.fromEntries(
-      node.inputs.map((inputId) => [inputId, resolveNode(inputId, hop + 1)]),
+      node.inputs.map((inputId) => [inputId, resolveNode(inputId)]),
     );
     const blocked = Object.values(inputs).filter((input) => input.state !== 'resolved');
     if (blocked.length) {
@@ -119,7 +136,7 @@ function solveGraph({ graph, target, budget, context = {} }) {
         inputs,
         blockedBy: blocked.map((input) => input.nodeId),
       });
-      memo.set(cacheKey, result);
+      memo.set(id, result);
       trace.push(result);
       return result;
     }
@@ -132,12 +149,12 @@ function solveGraph({ graph, target, budget, context = {} }) {
     );
     const value = node.evaluate({ inputs: values, context, state });
     const result = resolved(node, value);
-    memo.set(cacheKey, result);
+    memo.set(id, result);
     trace.push(result);
     return result;
   }
 
-  const result = resolveNode(target, 0);
+  const result = resolveNode(target);
   return Object.freeze({
     result,
     usage: Object.freeze({
@@ -150,4 +167,4 @@ function solveGraph({ graph, target, budget, context = {} }) {
   });
 }
 
-module.exports = { createNode, createGraph, solveGraph };
+module.exports = { createNode, createGraph, solveGraph, shortestDependencyHops };
