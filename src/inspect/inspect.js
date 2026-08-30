@@ -121,6 +121,7 @@ function inspectWorld(world) {
       id: region.id,
       extent: region.extent,
       neighbors: region.boundary.neighbors,
+      attributes: Object.freeze({ ...(region.attributes ?? {}) }),
       artifactId: region.artifactId,
       slots: Object.keys(region.slots),
     }))),
