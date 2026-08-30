@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Small World — M0.6 Parity Workbench</title>
   <link rel="stylesheet" href="/parity.css">
+  <link rel="stylesheet" href="/world-language.css">
 </head>
 <body>
   <main class="shell">
@@ -20,7 +21,15 @@
       </form>
     </header>
 
-    <section class="world-panel panel">
+    <div class="sw-language-rail" aria-label="Shared visual grammar">
+      <span class="sw-language-key" data-sw-domain="world">world</span>
+      <span class="sw-language-key" data-sw-domain="instrument">instrument</span>
+      <span class="sw-language-key" data-sw-domain="resolution">resolution</span>
+      <span class="sw-language-key" data-sw-domain="evidence">evidence</span>
+      <span class="sw-language-key" data-sw-domain="dynamic">dynamic</span>
+    </div>
+
+    <section class="world-panel panel sw-frame" data-sw-domain="world">
       <div class="toolbar">
         <button id="toggle">Play</button>
         <button id="step">Step Wave</button>
@@ -50,39 +59,39 @@
     </section>
 
     <aside class="side-grid">
-      <section class="panel side-panel">
+      <section class="panel side-panel sw-frame" data-sw-domain="world">
         <h2>Field topology</h2>
         <div id="zoneSummary"></div>
       </section>
 
-      <section class="panel side-panel">
+      <section class="panel side-panel sw-frame" data-sw-domain="instrument">
         <div class="panel-heading"><h2>Clock</h2><button class="inspect-link" type="button" data-inspect="clock">inspect</button></div>
         <canvas id="clock" width="300" height="300"></canvas>
         <div id="clockReadout" class="mono"></div>
       </section>
 
-      <section class="panel side-panel">
+      <section class="panel side-panel sw-frame" data-sw-domain="world">
         <div class="panel-heading"><h2>Selected cell</h2><button class="inspect-link" type="button" data-inspect="cell">inspect</button></div>
         <div id="selected" class="small">Select a visible cell.</div>
       </section>
 
-      <section class="panel side-panel">
+      <section class="panel side-panel sw-frame" data-sw-domain="resolution">
         <h2>Spawn proposition</h2>
         <div id="spawnExplain" class="small"></div>
       </section>
 
-      <section class="panel side-panel">
+      <section class="panel side-panel sw-frame" data-sw-domain="dynamic">
         <h2>Temporal transfer</h2>
         <div id="timeTransfer" class="small"></div>
       </section>
 
-      <section class="panel side-panel">
+      <section class="panel side-panel sw-frame" data-sw-domain="instrument">
         <div class="panel-heading"><h2>Player hourglass</h2><button class="inspect-link" type="button" data-inspect="hourglass">inspect</button></div>
         <div id="hourglass"></div>
         <div class="actions"><button id="spend">Spend selected</button><button id="flipGlass">Flip glass</button></div>
       </section>
 
-      <section class="panel side-panel wide inspector-panel">
+      <section class="panel side-panel wide inspector-panel sw-frame" data-sw-domain="evidence">
         <div class="panel-heading">
           <div><p class="eyebrow">One object grammar</p><h2>Inspector</h2></div>
           <span id="inspectorKind" class="tag"></span>
@@ -95,7 +104,7 @@
         <div id="objectInspector" class="object-inspector small"></div>
       </section>
 
-      <section class="panel side-panel wide">
+      <section class="panel side-panel wide sw-frame" data-sw-domain="resolution">
         <div class="panel-heading">
           <div><p class="eyebrow">New in M0.6</p><h2>Generative overlay</h2></div>
           <span id="generativeStatus" class="tag"></span>
@@ -103,7 +112,7 @@
         <div id="generative"></div>
       </section>
 
-      <section class="panel side-panel wide">
+      <section class="panel side-panel wide sw-frame" data-sw-domain="evidence">
         <h2>Spawn / resolution / transfer ledger</h2>
         <div id="ledger"></div>
       </section>
