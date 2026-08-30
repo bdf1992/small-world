@@ -1,6 +1,6 @@
 'use strict';
 
-const { pickWeighted } = require('../kernel/address');
+const { hash64, pickWeighted } = require('../kernel/address');
 const {
   createDefinition,
   createTemplate,
@@ -139,9 +139,10 @@ function realizeArtifact(card, virtual, seed) {
     properties: pickCount(seed, virtual, 'propertyCount'),
     stats: pickCount(seed, virtual, 'statCount'),
   });
+  const suffix = hash64(seed, virtual.id, artifactKind).toString(16).padStart(16, '0').slice(-8);
 
   return createInstance(virtual, {
-    id: `artifact-${String(seed)}-${artifactKind.split('.').pop().toLowerCase()}`,
+    id: `artifact-${artifactKind.split('.').pop().toLowerCase()}-${suffix}`,
     kind: artifactKind,
     elements: pickElements(seed, virtual, counts.elements),
     attributes: genericSlots('Attribute', counts.attributes),
