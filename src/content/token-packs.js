@@ -1,6 +1,7 @@
 'use strict';
 
 const { createToken } = require('../model/token');
+const { TYPES, relationsTo } = require('../model/base-relations');
 
 function freeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -28,21 +29,29 @@ function weightsFor(pack) {
   return Object.fromEntries(pack.entries.map(({ token, weight }) => [token.id, weight]));
 }
 
+const ARTIFACT_KIND_IDS = Object.freeze(
+  relationsTo(TYPES.Artifact.id)
+    .filter((edge) => edge.predicate === 'is-a')
+    .map((edge) => edge.subject),
+);
+
+const KIND_TOKENS = Object.freeze(Object.fromEntries(
+  ARTIFACT_KIND_IDS.map((id) => [id, createToken({ id, text: id, role: 'kind' })]),
+));
+
 const TOKENS = Object.freeze({
-  artifactPersona: createToken({ id: 'Artifact.Persona', text: 'Artifact.Persona', role: 'kind' }),
+  ...KIND_TOKENS,
   attribute: createToken({ id: 'Attribute', text: 'Attribute', role: 'value-kind' }),
   property: createToken({ id: 'Property', text: 'Property', role: 'value-kind' }),
   stat: createToken({ id: 'Stat', text: 'Stat', role: 'value-kind' }),
 });
 
-// Intentionally tiny. More Artifact kinds are data added later; selecting an
-// Artifact kind does not create a second, type-specific Card.
+// Card.Artifact draws only from kinds already admitted by the base relation graph.
+// Equal weights are neutral placeholders until actual weighting rules exist.
 const ARTIFACT_KIND_PACK = createWeightedTokenPack({
   id: 'TokenPack.ArtifactKind',
   accepts: 'Artifact',
-  entries: [
-    { token: TOKENS.artifactPersona, weight: 1 },
-  ],
+  entries: ARTIFACT_KIND_IDS.map((id) => ({ token: KIND_TOKENS[id], weight: 1 })),
 });
 
 const VALUE_KIND_PACK = createWeightedTokenPack({
@@ -57,6 +66,7 @@ const VALUE_KIND_PACK = createWeightedTokenPack({
 
 module.exports = {
   TOKENS,
+  ARTIFACT_KIND_IDS,
   ARTIFACT_KIND_PACK,
   VALUE_KIND_PACK,
   createWeightedTokenPack,
