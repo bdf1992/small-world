@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/resolution-editor.css">
   <link rel="stylesheet" href="/document-editor.css">
   <link rel="stylesheet" href="/world-lineage.css">
+  <link rel="stylesheet" href="/world-language.css">
 </head>
 <body>
   <main class="shell">
@@ -34,8 +35,16 @@
       <button type="button" data-mode="world">World</button>
     </nav>
 
+    <div class="sw-language-rail" aria-label="Shared visual grammar">
+      <span class="sw-language-key" data-sw-domain="world">world</span>
+      <span class="sw-language-key" data-sw-domain="instrument">instrument</span>
+      <span class="sw-language-key" data-sw-domain="authoring">authoring</span>
+      <span class="sw-language-key" data-sw-domain="resolution">resolution</span>
+      <span class="sw-language-key" data-sw-domain="evidence">evidence</span>
+    </div>
+
     <section class="workspace">
-      <section class="main-panel">
+      <section class="main-panel sw-frame" data-sw-domain="authoring">
         <div class="panel-heading">
           <div>
             <p id="modeKind" class="eyebrow">Card</p>
@@ -44,7 +53,7 @@
           <div id="metrics" class="metrics"></div>
         </div>
 
-        <section id="cardWorkshop" class="card-workshop" aria-label="Card library">
+        <section id="cardWorkshop" class="card-workshop sw-frame" data-sw-domain="authoring" aria-label="Card library">
           <div class="card-library-bar">
             <label>Card <select id="cardSelect"></select></label>
             <label>Id <input id="cardId" type="text" value="persona.ice-dragon" spellcheck="false"></label>
@@ -73,7 +82,7 @@
           <p id="cardStatus" class="muted card-status">Card edits compile through the application authoring port.</p>
         </section>
 
-        <section id="packWorkshop" class="pack-workshop" aria-label="Pack circuit" hidden>
+        <section id="packWorkshop" class="pack-workshop sw-frame" data-sw-domain="authoring" aria-label="Pack circuit" hidden>
           <div class="pack-head">
             <div><p class="eyebrow">Situation Pack</p><h3>Spire</h3></div>
             <div id="packResult" class="pack-result"></div>
@@ -82,7 +91,7 @@
           <p id="packStatus" class="muted pack-status">Connections are admitted only when a Card satisfies the slot Requirement.</p>
         </section>
 
-        <section id="resolutionWorkshop" class="resolution-workshop" aria-label="Resolution frontier" hidden>
+        <section id="resolutionWorkshop" class="resolution-workshop sw-frame" data-sw-domain="resolution" aria-label="Resolution frontier" hidden>
           <div class="resolution-head">
             <div>
               <p class="eyebrow">Bounded solve</p>
@@ -120,7 +129,7 @@
           <p id="resolutionStatus" class="muted resolution-status">A bounded stop is evidence, not invalid world state.</p>
         </section>
 
-        <details id="documentWorkshop" class="document-workshop">
+        <details id="documentWorkshop" class="document-workshop sw-frame" data-sw-domain="evidence">
           <summary><span><b>Authoring Document</b><small>portable Card + Pack truth · runtime state excluded</small></span></summary>
           <div class="document-toolbar">
             <button id="reloadDocument" type="button">Export current</button>
@@ -132,7 +141,7 @@
         </details>
 
         <div id="semantic" class="semantic"></div>
-        <div id="graphWrap" class="graph-wrap" hidden>
+        <div id="graphWrap" class="graph-wrap sw-frame" data-sw-domain="evidence" hidden>
           <div class="graph-toolbar">
             <span>Tuple families</span>
             <label><input type="checkbox" data-family="structural" checked> structural</label>
@@ -146,7 +155,7 @@
         </div>
       </section>
 
-      <aside class="inspector">
+      <aside class="inspector sw-frame" data-sw-domain="evidence">
         <p class="eyebrow">Inspector</p>
         <div id="inspector"><p class="muted">Select a node or relation.</p></div>
       </aside>
@@ -168,5 +177,6 @@
   <script src="/resolution-editor.js" defer></script>
   <script src="/document-editor.js" defer></script>
   <script src="/world-lineage.js" defer></script>
+  <script src="/world-language.js" defer></script>
 </body>
 </html>
