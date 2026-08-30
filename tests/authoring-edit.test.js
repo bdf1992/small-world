@@ -20,8 +20,9 @@ function guardian(snapshot) {
 function main() {
   const session = createAuthoringSession({ seed: 93208 });
   const initial = session.snapshot();
-  assert.strictEqual(initial.projectionVersion, 2);
+  assert.strictEqual(initial.projectionVersion, 3);
   assert.strictEqual(initial.revision, 0);
+  assert.strictEqual(initial.editor.selectedCardId, 'persona.dragon');
   assert.strictEqual(guardian(initial).label, 'Dragon');
 
   const banditOnly1 = session.setWeight({ target: 'spire', field: 'guardian', candidate: 'persona.dragon', weight: 0 });
@@ -70,6 +71,7 @@ function main() {
 
   console.log(JSON.stringify({
     pass: true,
+    projectionVersion: initial.projectionVersion,
     initialGuardian: guardian(initial).label,
     editedGuardian: guardian(banditOnly).label,
     editedDragonRarity: dragon.facts.rarity,
