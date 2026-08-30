@@ -17,10 +17,13 @@ function titleCase(value) {
 }
 
 function labelFor(value, fallback = 'Object') {
+  const persona = value?.grammar === 'Artifact/Persona';
   return value?.packForm
     ?? value?.properties?.species
-    ?? value?.properties?.form
     ?? value?.fixed?.species
+    ?? (persona ? value?.properties?.role : null)
+    ?? (persona ? value?.fixed?.role : null)
+    ?? value?.properties?.form
     ?? value?.fixed?.form
     ?? (value?.templateId ? titleCase(value.templateId.split('.').pop()) : null)
     ?? fallback;
