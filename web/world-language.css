@@ -1,0 +1,200 @@
+:root{
+  --sw-vl-world:#9eaa7d;
+  --sw-vl-instrument:#c3a46e;
+  --sw-vl-authoring:#8f9ea9;
+  --sw-vl-resolution:#9a8fb5;
+  --sw-vl-evidence:#a97979;
+  --sw-vl-dynamic:#739ba0;
+  --sw-vl-text:#e7e2d7;
+  --sw-vl-muted:#989287;
+  --sw-vl-line:rgba(231,226,215,.14);
+  --sw-vl-soft:rgba(231,226,215,.035);
+}
+
+/*
+ * M0.7-G visual-language contract.
+ *
+ * These selectors style meaning that the page has already declared with
+ * data-sw-domain / data-sw-kind. They do not derive world or authority truth.
+ */
+
+.sw-frame{
+  --sw-vl-accent:var(--sw-vl-evidence);
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+}
+.sw-frame[data-sw-domain="world"]{--sw-vl-accent:var(--sw-vl-world)}
+.sw-frame[data-sw-domain="instrument"]{--sw-vl-accent:var(--sw-vl-instrument)}
+.sw-frame[data-sw-domain="authoring"]{--sw-vl-accent:var(--sw-vl-authoring)}
+.sw-frame[data-sw-domain="resolution"]{--sw-vl-accent:var(--sw-vl-resolution)}
+.sw-frame[data-sw-domain="evidence"]{--sw-vl-accent:var(--sw-vl-evidence)}
+.sw-frame[data-sw-domain="dynamic"]{--sw-vl-accent:var(--sw-vl-dynamic)}
+
+.sw-frame::before{
+  content:attr(data-sw-domain);
+  position:absolute;
+  z-index:3;
+  top:0;
+  right:0;
+  padding:3px 7px 4px 9px;
+  border-left:1px solid color-mix(in srgb,var(--sw-vl-accent) 42%,transparent);
+  border-bottom:1px solid color-mix(in srgb,var(--sw-vl-accent) 42%,transparent);
+  background:color-mix(in srgb,var(--sw-vl-accent) 9%,rgba(7,8,8,.92));
+  color:color-mix(in srgb,var(--sw-vl-accent) 74%,var(--sw-vl-text));
+  font:600 8px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  pointer-events:none;
+}
+.sw-frame::after{
+  content:"";
+  position:absolute;
+  z-index:2;
+  inset:0;
+  border-top:2px solid color-mix(in srgb,var(--sw-vl-accent) 42%,transparent);
+  border-left:1px solid color-mix(in srgb,var(--sw-vl-accent) 14%,transparent);
+  pointer-events:none;
+}
+
+.sw-language-rail{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  flex-wrap:wrap;
+  margin:0 0 10px;
+  padding:0 2px;
+  color:var(--sw-vl-muted);
+  font:9px/1.25 ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.sw-language-rail::before{
+  content:"visual grammar";
+  margin-right:4px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  opacity:.64;
+}
+.sw-language-key{
+  --sw-vl-accent:var(--sw-vl-evidence);
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:3px 6px;
+  border:1px solid color-mix(in srgb,var(--sw-vl-accent) 34%,transparent);
+  border-radius:999px;
+  background:color-mix(in srgb,var(--sw-vl-accent) 6%,transparent);
+  white-space:nowrap;
+}
+.sw-language-key::before{
+  content:"";
+  width:5px;
+  height:5px;
+  border:1px solid var(--sw-vl-accent);
+  transform:rotate(45deg);
+}
+.sw-language-key[data-sw-domain="world"]{--sw-vl-accent:var(--sw-vl-world)}
+.sw-language-key[data-sw-domain="instrument"]{--sw-vl-accent:var(--sw-vl-instrument)}
+.sw-language-key[data-sw-domain="authoring"]{--sw-vl-accent:var(--sw-vl-authoring)}
+.sw-language-key[data-sw-domain="resolution"]{--sw-vl-accent:var(--sw-vl-resolution)}
+.sw-language-key[data-sw-domain="evidence"]{--sw-vl-accent:var(--sw-vl-evidence)}
+.sw-language-key[data-sw-domain="dynamic"]{--sw-vl-accent:var(--sw-vl-dynamic)}
+
+.sw-object,
+.world-card,
+.lineage-member,
+.trace-step{
+  --sw-vl-accent:var(--sw-vl-world);
+  position:relative;
+}
+.sw-object::before,
+.world-card::before,
+.lineage-member::before,
+.trace-step::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:7px;
+  bottom:7px;
+  width:2px;
+  border-radius:2px;
+  background:color-mix(in srgb,var(--sw-vl-accent) 72%,transparent);
+  opacity:.78;
+}
+.world-card{padding-left:17px!important}
+.lineage-member{padding-left:13px!important}
+.trace-step{padding-left:12px!important}
+
+[data-sw-kind="Region"]{--sw-vl-accent:var(--sw-vl-world)}
+[data-sw-kind="Situation"]{--sw-vl-accent:color-mix(in srgb,var(--sw-vl-world) 58%,var(--sw-vl-authoring))}
+[data-sw-kind="Artifact"],
+[data-sw-kind="Instance"]{--sw-vl-accent:var(--sw-vl-instrument)}
+[data-sw-kind="Card"],
+[data-sw-kind="Pack"],
+[data-sw-kind="Requirement"]{--sw-vl-accent:var(--sw-vl-authoring)}
+[data-sw-kind="Virtual"],
+[data-sw-kind="Resolution"]{--sw-vl-accent:var(--sw-vl-resolution)}
+[data-sw-kind="Evidence"],
+[data-sw-kind="Lineage"]{--sw-vl-accent:var(--sw-vl-evidence)}
+
+.sw-object-link{
+  display:grid;
+  grid-template-columns:minmax(60px,.55fr) minmax(80px,1fr);
+  align-items:center;
+  gap:7px;
+  width:100%;
+  text-align:left;
+  border-left:2px solid color-mix(in srgb,var(--sw-vl-accent) 56%,transparent)!important;
+}
+.sw-object-link small{
+  grid-column:1/-1;
+  color:var(--sw-vl-muted);
+  font:9px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+
+.sw-lifecycle{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:5px;
+}
+.sw-lifecycle [data-sw-stage]{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+}
+.sw-lifecycle [data-sw-stage]:not(:last-child)::after{
+  content:"→";
+  color:var(--sw-vl-muted);
+  margin-left:2px;
+}
+
+/* Existing graph families now share the same top-level visual vocabulary. */
+.edge.authoring{stroke:var(--sw-vl-authoring)!important}
+.edge.dynamic{stroke:var(--sw-vl-dynamic)!important}
+.edge.derivation{stroke:var(--sw-vl-resolution)!important}
+.edge.evidence{stroke:var(--sw-vl-evidence)!important}
+.dot.authoring{background:var(--sw-vl-authoring)!important}
+.dot.dynamic{background:var(--sw-vl-dynamic)!important}
+.dot.derivation{background:var(--sw-vl-resolution)!important}
+.dot.evidence{background:var(--sw-vl-evidence)!important}
+
+/* Instrument canvases are machinery, not generic charts. */
+.sw-frame[data-sw-domain="instrument"] canvas{
+  filter:drop-shadow(0 8px 18px rgba(0,0,0,.22));
+}
+
+/* Resolution is unsettled by construction; keep a quiet dashed interior cadence. */
+.sw-frame[data-sw-domain="resolution"]{
+  background-image:repeating-linear-gradient(135deg,transparent 0,transparent 13px,color-mix(in srgb,var(--sw-vl-resolution) 4%,transparent) 13px,color-mix(in srgb,var(--sw-vl-resolution) 4%,transparent) 14px);
+}
+
+/* Evidence surfaces should read as receipts rather than editable controls. */
+.sw-frame[data-sw-domain="evidence"] .mono,
+.sw-frame[data-sw-domain="evidence"] code{
+  font-variant-ligatures:none;
+}
+
+@media(max-width:680px){
+  .sw-language-rail{overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
+  .sw-frame::before{font-size:7px}
+}
