@@ -22,6 +22,8 @@ const {
   cardDraftFromTemplate,
   validateCardDraft,
   buildCardTemplate,
+  virtualizeCard,
+  realizeCard,
   resolveCardDraft,
 } = require('./card-library');
 const { rootedTree } = require('../model/tuple-graph');
@@ -58,13 +60,9 @@ class AuthoringSession {
     if (!Number.isInteger(seed) || seed < 0) throw new Error('seed must be a non-negative integer');
     this.seed = seed;
     this.revision = 0;
-    this.cards = {
-      [dragonTemplate.id]: cardDraftFromTemplate(dragonTemplate),
-    };
+    this.cards = { [dragonTemplate.id]: cardDraftFromTemplate(dragonTemplate) };
     this.selectedCardId = dragonTemplate.id;
-    this.spire = {
-      slots: clone(spireTemplate.slots),
-    };
+    this.spire = { slots: clone(spireTemplate.slots) };
     return this.snapshot();
   }
 
@@ -72,6 +70,18 @@ class AuthoringSession {
     const draft = this.cards[cardId];
     if (!draft) throw new Error(`unknown Card: ${cardId}`);
     return draft;
+  }
+
+  packSlot(slot) {
+    const spec = this.spire.slots[slot];
+    if (!spec) throw new Error(`unknown Pack slot: ${slot}`);
+    return spec;
+  }
+
+  compatibleWithSlot(cardId, slot) {
+    const card = this.card(cardId);
+    const spec = this.packSlot(slot);
+    return card.grammar === spec.accepts;
   }
 
   selectCard({ cardId }) {
@@ -112,6 +122,11 @@ class AuthoringSession {
     next.id = newId;
     const validation = validateCardDraft(next, { existingIds: [...Object.keys(this.cards).filter((id) => id !== cardId), newId] });
     if (!validation.valid) throw new Error(validation.errors.join('; '));
+    for (const spec of Object.values(this.spire.slots)) {
+      if (!Object.prototype.hasOwnProperty.call(spec.candidates ?? {}, cardId)) continue;
+      spec.candidates[newId] = spec.candidates[cardId];
+      delete spec.candidates[cardId];
+    }
     delete this.cards[cardId];
     this.cards[newId] = next;
     this.selectedCardId = newId;
@@ -122,6 +137,12 @@ class AuthoringSession {
   deleteCard({ cardId = this.selectedCardId }) {
     if (cardId === dragonTemplate.id) throw new Error('canonical Dragon Card cannot be deleted');
     this.card(cardId);
+    for (const spec of Object.values(this.spire.slots)) {
+      if (!Object.prototype.hasOwnProperty.call(spec.candidates ?? {}, cardId)) continue;
+      const previous = spec.candidates[cardId];
+      delete spec.candidates[cardId];
+      try { ensureSupport(spec.candidates); } catch (error) { spec.candidates[cardId] = previous; throw new Error(`cannot delete Card while it is the only supported Pack candidate: ${cardId}`); }
+    }
     delete this.cards[cardId];
     this.selectedCardId = dragonTemplate.id;
     this.revision += 1;
@@ -162,20 +183,49 @@ class AuthoringSession {
     return this.snapshot();
   }
 
+  connectCard({ slot, cardId = this.selectedCardId, weight = 1 }) {
+    const spec = this.packSlot(slot);
+    const card = this.card(cardId);
+    if (card.grammar !== spec.accepts) {
+      throw new Error(`Requirement mismatch: ${slot} accepts ${spec.accepts}, Card provides ${card.grammar}`);
+    }
+    spec.candidates[cardId] = finiteWeight(weight);
+    ensureSupport(spec.candidates);
+    this.revision += 1;
+    return this.snapshot();
+  }
+
+  disconnectCard({ slot, cardId = this.selectedCardId }) {
+    const spec = this.packSlot(slot);
+    if (!Object.prototype.hasOwnProperty.call(spec.candidates, cardId)) throw new Error(`Card is not connected to ${slot}: ${cardId}`);
+    const previous = spec.candidates[cardId];
+    delete spec.candidates[cardId];
+    try { ensureSupport(spec.candidates); } catch (error) { spec.candidates[cardId] = previous; throw error; }
+    this.revision += 1;
+    return this.snapshot();
+  }
+
+  setPackCandidateWeight({ slot, cardId, weight }) {
+    const spec = this.packSlot(slot);
+    assertSupported(spec.candidates, cardId);
+    const previous = spec.candidates[cardId];
+    spec.candidates[cardId] = finiteWeight(weight);
+    try { ensureSupport(spec.candidates); } catch (error) { spec.candidates[cardId] = previous; throw error; }
+    this.revision += 1;
+    return this.snapshot();
+  }
+
+  focusPackCandidate({ slot, cardId }) {
+    const spec = this.packSlot(slot);
+    assertSupported(spec.candidates, cardId);
+    for (const candidate of Object.keys(spec.candidates)) spec.candidates[candidate] = candidate === cardId ? 1 : 0;
+    this.revision += 1;
+    return this.snapshot();
+  }
+
   setWeight({ target, field, candidate, weight }) {
-    if (target === 'dragon') {
-      return this.setCardWeight({ cardId: dragonTemplate.id, field, candidate, weight });
-    }
-    if (target === 'spire') {
-      const slot = this.spire.slots[field];
-      if (!slot?.candidates) throw new Error(`Spire slot has no candidate weights: ${field}`);
-      assertSupported(slot.candidates, candidate);
-      const previous = slot.candidates[candidate];
-      slot.candidates[candidate] = finiteWeight(weight);
-      try { ensureSupport(slot.candidates); } catch (error) { slot.candidates[candidate] = previous; throw error; }
-      this.revision += 1;
-      return this.snapshot();
-    }
+    if (target === 'dragon') return this.setCardWeight({ cardId: dragonTemplate.id, field, candidate, weight });
+    if (target === 'spire') return this.setPackCandidateWeight({ slot: field, cardId: candidate, weight });
     throw new Error(`unknown authoring target: ${target}`);
   }
 
@@ -184,33 +234,45 @@ class AuthoringSession {
   }
 
   buildTemplates() {
+    const cardTemplates = Object.freeze(Object.fromEntries(Object.entries(this.cards).map(([id, draft]) => [id, buildCardTemplate(draft)])));
     const dragonDraft = this.cards[dragonTemplate.id];
     const dragon = createTemplate(personaDefinition, {
       id: dragonDraft.id,
-      fixed: clone(dragonDraft.fixed),
-      priors: clone(dragonDraft.priors),
-      rules: clone(dragonDraft.rules),
-      slots: clone(dragonDraft.slots),
+      fixed: clone(dragonDraft.fixed), priors: clone(dragonDraft.priors), rules: clone(dragonDraft.rules), slots: clone(dragonDraft.slots),
     });
     const spire = createTemplate(packDefinition, {
       id: spireTemplate.id,
-      fixed: spireTemplate.fixed,
-      priors: spireTemplate.priors,
-      rules: spireTemplate.rules,
-      slots: clone(this.spire.slots),
+      fixed: spireTemplate.fixed, priors: spireTemplate.priors, rules: spireTemplate.rules, slots: clone(this.spire.slots),
     });
-    return { dragon, spire };
+    return { dragon, spire, cardTemplates };
+  }
+
+  packEditorProjection() {
+    return Object.freeze({
+      id: spireTemplate.id,
+      form: spireTemplate.fixed.form,
+      slots: Object.freeze(Object.fromEntries(Object.entries(this.spire.slots).map(([slot, spec]) => {
+        const compatible = Object.values(this.cards)
+          .filter((card) => card.grammar === spec.accepts)
+          .map((card) => Object.freeze({ id: card.id, label: cardIdentity(card), connected: Object.prototype.hasOwnProperty.call(spec.candidates, card.id) }));
+        return [slot, Object.freeze({
+          role: slot,
+          requirement: Object.freeze({ accepts: spec.accepts, count: spec.count ?? 1 }),
+          candidates: Object.freeze({ ...spec.candidates }),
+          compatible: Object.freeze(compatible),
+        })];
+      }))),
+    });
   }
 
   snapshot() {
-    const { dragon, spire } = this.buildTemplates();
-    const templateRegistry = Object.freeze({
-      ...templates,
-      [dragon.id]: dragon,
-      [spire.id]: spire,
-    });
+    const { dragon, spire, cardTemplates } = this.buildTemplates();
+    const templateRegistry = Object.freeze({ ...templates, ...cardTemplates, [dragon.id]: dragon, [spire.id]: spire });
+    const artifactRuntimeRegistry = Object.freeze(Object.fromEntries(Object.keys(cardTemplates)
+      .filter((id) => id !== dragonTemplate.id)
+      .map((id) => [id, Object.freeze({ virtualize: virtualizeCard, realize: realizeCard })])));
     const selectedDraft = this.card();
-    const selectedTemplate = buildCardTemplate(selectedDraft);
+    const selectedTemplate = cardTemplates[this.selectedCardId];
     const card = templateGraph(selectedTemplate);
     const canonicalDragonCard = templateGraph(dragon);
     const pack = templateGraph(spire);
@@ -221,6 +283,7 @@ class AuthoringSession {
     const world = resolveWorld({ seed: this.seed }, {
       horizontalWorld: {
         templateRegistry,
+        artifactRuntimeRegistry,
         packTemplateOverrides: { [spire.id]: spire },
       },
     });
@@ -229,18 +292,11 @@ class AuthoringSession {
 
     const cards = Object.freeze(Object.fromEntries(Object.entries(this.cards).map(([id, draft]) => {
       const validation = validateCardDraft(draft);
-      return [id, Object.freeze({
-        id,
-        grammar: draft.grammar,
-        label: cardIdentity(draft),
-        canonical: id === dragonTemplate.id,
-        valid: validation.valid,
-        errors: validation.errors,
-      })];
+      return [id, Object.freeze({ id, grammar: draft.grammar, label: cardIdentity(draft), canonical: id === dragonTemplate.id, valid: validation.valid, errors: validation.errors })];
     })));
 
     return Object.freeze({
-      projectionVersion: 3,
+      projectionVersion: 4,
       mode: 'authoring-session',
       seed: this.seed,
       revision: this.revision,
@@ -260,25 +316,14 @@ class AuthoringSession {
         cards,
         card: Object.freeze({
           weighted: Object.freeze(Object.keys(selectedDraft.priors).filter((field) => selectedDraft.priors[field]?.source !== 'context')),
-          contextual: Object.freeze(Object.fromEntries(Object.entries(selectedDraft.priors)
-            .filter(([, prior]) => prior?.source === 'context')
-            .map(([field]) => [field, AFFINITIES]))),
+          contextual: Object.freeze(Object.fromEntries(Object.entries(selectedDraft.priors).filter(([, prior]) => prior?.source === 'context').map(([field]) => [field, AFFINITIES]))),
           fixed: Object.freeze(Object.keys(selectedDraft.fixed ?? {})),
         }),
-        pack: Object.freeze({ weighted: Object.freeze(['guardian', 'treasure']) }),
+        pack: this.packEditorProjection(),
       }),
-      preview: Object.freeze({
-        cardId: this.selectedCardId,
-        reference: preview.reference,
-        virtual: preview.virtual,
-        instance: preview.instance,
-      }),
+      preview: Object.freeze({ cardId: this.selectedCardId, reference: preview.reference, virtual: preview.virtual, instance: preview.instance }),
       views: Object.freeze({ card, pack, graph, resolution, world }),
-      trees: Object.freeze({
-        card: rootedTree(card, card.root),
-        pack: rootedTree(pack, pack.root),
-        scenario: rootedTree(graph, graph.root, { maxDepth: 8 }),
-      }),
+      trees: Object.freeze({ card: rootedTree(card, card.root), pack: rootedTree(pack, pack.root), scenario: rootedTree(graph, graph.root, { maxDepth: 8 }) }),
     });
   }
 }
@@ -287,7 +332,4 @@ function createAuthoringSession(options) {
   return new AuthoringSession(options);
 }
 
-module.exports = {
-  AuthoringSession,
-  createAuthoringSession,
-};
+module.exports = { AuthoringSession, createAuthoringSession };
