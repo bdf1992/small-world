@@ -57,6 +57,7 @@
   pointer-events:none;
 }
 
+.shell>.sw-language-rail{grid-column:1/-1}
 .sw-language-rail{
   display:flex;
   align-items:center;
