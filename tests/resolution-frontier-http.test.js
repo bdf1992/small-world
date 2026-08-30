@@ -33,10 +33,12 @@ async function main() {
 
     let result = await json(`${base}/api/authoring`);
     assert.strictEqual(result.response.status, 200);
-    assert.strictEqual(result.body.projectionVersion, 5);
+    assert.strictEqual(result.body.projectionVersion, 6);
     assert.strictEqual(result.body.revision, 0);
     assert.strictEqual(result.body.resolutionRevision, 0);
     assert.strictEqual(result.body.resolution.complete, true);
+    assert.strictEqual(result.body.views.landing.type, 'WorldLanding');
+    assert.strictEqual(result.body.landing.traceable.length, 6);
 
     result = await json(`${base}/api/authoring/set-budget?instances=0`);
     assert.strictEqual(result.response.status, 200);
@@ -45,6 +47,7 @@ async function main() {
     assert.strictEqual(result.body.resolution.complete, false);
     assert.ok(result.body.resolution.stops.some((stop) => stop.reason === 'budget.maxInstances'));
     assert.ok(result.body.resolution.virtuals.length > 0);
+    assert.deepStrictEqual(result.body.landing.traceable, []);
 
     result = await json(`${base}/api/authoring/set-budget?hops=4&slots=3&instances=9`);
     assert.strictEqual(result.response.status, 200);
@@ -58,6 +61,7 @@ async function main() {
     assert.strictEqual(result.body.resolutionRevision, 3);
     assert.strictEqual(result.body.resolution.complete, true);
     assert.strictEqual(result.body.views.world.status, 'resolved');
+    assert.strictEqual(result.body.landing.traceable.length, 6);
 
     const invalid = await json(`${base}/api/authoring/set-budget?slots=-1`);
     assert.strictEqual(invalid.response.status, 400);
@@ -66,8 +70,10 @@ async function main() {
     console.log(JSON.stringify({
       pass: true,
       httpResolution: true,
+      projectionVersion: result.body.projectionVersion,
       resolutionRevision: result.body.resolutionRevision,
       state: result.body.resolution.state,
+      landed: result.body.landing.traceable.length,
     }, null, 2));
   } finally {
     await new Promise((resolve) => server.close(resolve));
