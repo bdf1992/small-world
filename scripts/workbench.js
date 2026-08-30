@@ -139,7 +139,9 @@ function createWorkbenchServer({
       if (url.pathname === '/classic') return serveFile(res, 'index.html', 'text/html');
       if (url.pathname === '/parity.js') return serveFile(res, 'parity.js', 'text/javascript');
       if (url.pathname === '/inspector.js') return serveFile(res, 'inspector.js', 'text/javascript');
+      if (url.pathname === '/world-language.js') return serveFile(res, 'world-language.js', 'text/javascript');
       if (url.pathname === '/parity.css') return serveFile(res, 'parity.css', 'text/css');
+      if (url.pathname === '/world-language.css') return serveFile(res, 'world-language.css', 'text/css');
       if (url.pathname === '/authoring.js') return serveFile(res, 'authoring.js', 'text/javascript');
       if (url.pathname === '/card-editor.js') return serveFile(res, 'card-editor.js', 'text/javascript');
       if (url.pathname === '/pack-editor.js') return serveFile(res, 'pack-editor.js', 'text/javascript');
@@ -172,6 +174,7 @@ function main() {
     console.log('Card and Pack edits change authored revision; Hops / Slots / Instances change only resolution revision.');
     console.log('Authoring Document export/import is plain-data JSON and excludes runtime/lifecycle state.');
     console.log('World landing traces realized objects backward to Card / Pack / Requirement / Region custody.');
+    console.log('World and authoring surfaces share one declarative visual grammar; presentation does not own world truth.');
     console.log('Press Ctrl+C to stop.');
   });
 }
