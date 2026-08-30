@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Small World — M0.6 Parity Workbench</title>
+  <link rel="stylesheet" href="/parity.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">M0.6 parity restoration · M0.5 whole-shape canon</p>
+        <h1>Small World</h1>
+        <p class="subtitle">Recursive fields · typed time · generative possibility · deterministic collapse</p>
+      </div>
+      <form id="world-controls" class="seed-controls">
+        <label>World seed <input id="seed" type="number" min="0" value="93208"></label>
+        <button type="submit" class="primary">Regenerate</button>
+      </form>
+    </header>
+
+    <section class="world-panel panel">
+      <div class="toolbar">
+        <button id="toggle">Play</button>
+        <button id="step">Step Wave</button>
+        <button id="finish">Resolve All</button>
+        <span class="separator"></span>
+        <button id="dive">Dive Into Cell</button>
+        <button id="back">Back</button>
+        <span class="separator"></span>
+        <button id="tick">Cross Tick + Resolve Time</button>
+        <button id="flipClock">Flip Day/Night</button>
+        <span class="separator"></span>
+        <label>view
+          <select id="viewMode">
+            <option value="element">elements + child preview</option>
+            <option value="entropy">entropy</option>
+            <option value="roots">wave roots</option>
+            <option value="pressure">static pressure</option>
+            <option value="time">time pressure</option>
+          </select>
+        </label>
+        <label>wave ms <input id="speed" type="range" min="35" max="600" value="125"></label>
+      </div>
+      <div id="crumb" class="crumb"></div>
+      <div id="status" class="status">Loading application projection…</div>
+      <div class="canvas-wrap"><canvas id="world" width="940" height="940"></canvas></div>
+      <div id="legend" class="legend"></div>
+    </section>
+
+    <aside class="side-grid">
+      <section class="panel side-panel">
+        <h2>Field topology</h2>
+        <div id="zoneSummary"></div>
+      </section>
+
+      <section class="panel side-panel">
+        <div class="panel-heading"><h2>Clock</h2><button class="inspect-link" type="button" data-inspect="clock">inspect</button></div>
+        <canvas id="clock" width="300" height="300"></canvas>
+        <div id="clockReadout" class="mono"></div>
+      </section>
+
+      <section class="panel side-panel">
+        <div class="panel-heading"><h2>Selected cell</h2><button class="inspect-link" type="button" data-inspect="cell">inspect</button></div>
+        <div id="selected" class="small">Select a visible cell.</div>
+      </section>
+
+      <section class="panel side-panel">
+        <h2>Spawn proposition</h2>
+        <div id="spawnExplain" class="small"></div>
+      </section>
+
+      <section class="panel side-panel">
+        <h2>Temporal transfer</h2>
+        <div id="timeTransfer" class="small"></div>
+      </section>
+
+      <section class="panel side-panel">
+        <div class="panel-heading"><h2>Player hourglass</h2><button class="inspect-link" type="button" data-inspect="hourglass">inspect</button></div>
+        <div id="hourglass"></div>
+        <div class="actions"><button id="spend">Spend selected</button><button id="flipGlass">Flip glass</button></div>
+      </section>
+
+      <section class="panel side-panel wide inspector-panel">
+        <div class="panel-heading">
+          <div><p class="eyebrow">One object grammar</p><h2>Inspector</h2></div>
+          <span id="inspectorKind" class="tag"></span>
+        </div>
+        <div class="inspector-tabs">
+          <button type="button" data-inspector-tab="surface" class="active">Surface</button>
+          <button type="button" data-inspector-tab="possibility">Possibility</button>
+          <button type="button" data-inspector-tab="lineage">Lineage</button>
+        </div>
+        <div id="objectInspector" class="object-inspector small"></div>
+      </section>
+
+      <section class="panel side-panel wide">
+        <div class="panel-heading">
+          <div><p class="eyebrow">New in M0.6</p><h2>Generative overlay</h2></div>
+          <span id="generativeStatus" class="tag"></span>
+        </div>
+        <div id="generative"></div>
+      </section>
+
+      <section class="panel side-panel wide">
+        <h2>Spawn / resolution / transfer ledger</h2>
+        <div id="ledger"></div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="/parity.js" defer></script>
+  <script src="/inspector.js" defer></script>
+</body>
+</html>
