@@ -51,15 +51,17 @@ const virtualOnlySolve = solveGraph({
   target: dragonGraph.target,
   budget: createSolveBudget({ maxHops: 2, maxSlots: 0, maxInstances: 0 }),
 });
-const withSignals = inspect(dragonVirtual, { solve: virtualOnlySolve });
-assert.ok(withSignals.signals);
-assert.strictEqual(withSignals.signals.usage.instances, 0);
-assert.ok(withSignals.signals.stops.some((entry) => entry.reason === 'budget.maxInstances'));
-assert.ok(withSignals.signals.trace.some((entry) =>
+const withTrace = inspect(dragonVirtual, { solve: virtualOnlySolve });
+assert.ok(withTrace.solveTrace);
+assert.strictEqual(withTrace.solveTrace.usage.instances, 0);
+assert.ok(withTrace.solveTrace.stops.some((entry) => entry.reason === 'budget.maxInstances'));
+assert.ok(withTrace.solveTrace.trace.some((entry) =>
   entry.nodeId === dragonGraph.virtualTarget &&
   entry.state === 'resolved' &&
   entry.valueStage === 'virtual' &&
   entry.possibilityKeys.includes('element')));
+// Temporary M0.6 compatibility only; typed world Signal is a different concept.
+assert.deepStrictEqual(withTrace.signals, withTrace.solveTrace);
 
 const compiled = createHorizontalWorld(93208);
 const worldSolve = solveGraph({
@@ -79,7 +81,7 @@ const situationInspection = inspect(worldSolve.result.value.situations[0], { sol
 assert.strictEqual(situationInspection.facts.kind, 'Situation');
 assert.ok(situationInspection.facts.members.guardian);
 assert.ok(situationInspection.facts.members.treasure);
-assert.ok(situationInspection.signals.trace.length > 0);
+assert.ok(situationInspection.solveTrace.trace.length > 0);
 
 console.log(JSON.stringify({
   pass: true,
@@ -88,6 +90,6 @@ console.log(JSON.stringify({
     facts: instanceInspection.facts,
     lineage: instanceInspection.lineage,
   },
-  solver: withSignals.signals,
+  solver: withTrace.solveTrace,
   world: worldView,
 }, null, 2));
