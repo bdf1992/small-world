@@ -10,6 +10,7 @@
   const fields = document.getElementById('cardFields');
   const preview = document.getElementById('cardPreview');
   const status = document.getElementById('cardStatus');
+  const modeTitle = document.getElementById('modeTitle');
   const newButton = document.getElementById('newCard');
   const cloneButton = document.getElementById('cloneCard');
   const renameButton = document.getElementById('renameCard');
@@ -117,6 +118,8 @@
     grammar.value = selected?.grammar ?? 'Artifact/Persona';
     deleteButton.disabled = Boolean(selected?.canonical);
     renameButton.disabled = Boolean(selected?.canonical);
+    modeTitle.textContent = selected?.label ?? snapshot.editor.selectedCardId;
+    idInput.placeholder = `${snapshot.editor.selectedCardId}-copy`;
     status.textContent = `Revision ${snapshot.revision} · ${cards.length} Card${cards.length === 1 ? '' : 's'} · ${selected?.valid ? 'valid' : 'invalid'}`;
   }
 
@@ -139,7 +142,9 @@
   deleteButton.addEventListener('click', () => action('delete-card', { card: snapshot.editor.selectedCardId }).catch(() => {}));
 
   document.querySelectorAll('[data-mode]').forEach((button) => button.addEventListener('click', () => {
-    workshop.hidden = button.dataset.mode !== 'card';
+    const cardMode = button.dataset.mode === 'card';
+    workshop.hidden = !cardMode;
+    if (cardMode && snapshot) modeTitle.textContent = snapshot.editor.cards[snapshot.editor.selectedCardId]?.label ?? snapshot.editor.selectedCardId;
   }));
 
   load().catch((error) => { status.textContent = error.message; });
