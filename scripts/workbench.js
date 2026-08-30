@@ -6,6 +6,7 @@ const path = require('path');
 const { resolveWorld, DEFAULTS } = require('../src/app/world');
 const { createSimulationSession } = require('../src/app/simulation');
 const { createResolutionAuthoringSession } = require('../src/app/resolution-session');
+const { buildStudioProjection } = require('../src/app/studio');
 
 const WEB_ROOT = path.join(__dirname, '..', 'web');
 
@@ -36,6 +37,14 @@ function parseWorldRequest(url) {
       maxSlots: integerParam(url.searchParams, 'slots', DEFAULTS.budget.maxSlots),
       maxInstances: integerParam(url.searchParams, 'instances', DEFAULTS.budget.maxInstances),
     },
+  };
+}
+function parseStudioRequest(url) {
+  return {
+    seed: integerParam(url.searchParams, 'seed', DEFAULTS.seed),
+    kind: url.searchParams.get('kind') ?? 'persona',
+    profile: url.searchParams.get('profile') ?? 'wide',
+    utility: url.searchParams.get('utility') ?? 'generate',
   };
 }
 function send(res, status, body, contentType) {
@@ -119,6 +128,7 @@ function createWorkbenchServer({
     try {
       const url = new URL(req.url, 'http://localhost');
       if (url.pathname === '/api/world') return sendJson(res, 200, resolveWorld(parseWorldRequest(url)));
+      if (url.pathname === '/api/studio') return sendJson(res, 200, buildStudioProjection(parseStudioRequest(url)));
       if (url.pathname === '/api/authoring/document' && req.method === 'GET') return sendJson(res, 200, authoring.exportDocument());
       if (url.pathname === '/api/authoring/document.txt' && req.method === 'GET') return send(res, 200, authoring.serializeDocument(), 'application/json');
       if (url.pathname === '/api/authoring/document' && req.method === 'POST') {
@@ -135,8 +145,11 @@ function createWorkbenchServer({
       if (url.pathname === '/api/simulation') return sendJson(res, 200, simulation.snapshot());
       if (url.pathname.startsWith('/api/simulation/')) return sendJson(res, 200, applySimulationAction(simulation, url));
       if (url.pathname === '/' || url.pathname === '/index.html') return serveFile(res, 'parity.html', 'text/html');
+      if (url.pathname === '/studio') return serveFile(res, 'studio.html', 'text/html');
       if (url.pathname === '/authoring') return serveFile(res, 'authoring.html', 'text/html');
       if (url.pathname === '/classic') return serveFile(res, 'index.html', 'text/html');
+      if (url.pathname === '/studio.js') return serveFile(res, 'studio.js', 'text/javascript');
+      if (url.pathname === '/studio.css') return serveFile(res, 'studio.css', 'text/css');
       if (url.pathname === '/parity.js') return serveFile(res, 'parity.js', 'text/javascript');
       if (url.pathname === '/inspector.js') return serveFile(res, 'inspector.js', 'text/javascript');
       if (url.pathname === '/world-language.js') return serveFile(res, 'world-language.js', 'text/javascript');
@@ -170,14 +183,12 @@ function main() {
   server.listen(port, '127.0.0.1', () => {
     const address = server.address();
     console.log(`Small World workbench: http://127.0.0.1:${address.port}`);
-    console.log(`Authoring & Resolution: http://127.0.0.1:${address.port}/authoring`);
-    console.log('Card and Pack edits change authored revision; Hops / Slots / Instances change only resolution revision.');
-    console.log('Authoring Document export/import is plain-data JSON and excludes runtime/lifecycle state.');
-    console.log('World landing traces realized objects backward to Card / Pack / Requirement / Region custody.');
-    console.log('World and authoring surfaces share one declarative visual grammar; presentation does not own world truth.');
+    console.log(`Studio UX prototype: http://127.0.0.1:${address.port}/studio`);
+    console.log(`Authoring & Resolution (legacy M0.7 surface): http://127.0.0.1:${address.port}/authoring`);
+    console.log('Studio uses corrected generic Cards/Packs and Token naming; legacy authoring remains available for regression custody.');
     console.log('Press Ctrl+C to stop.');
   });
 }
 
 if (require.main === module) main();
-module.exports = { createWorkbenchServer, parseWorldRequest, integerParam, numberParam, textParam, readBody, applySimulationAction, applyAuthoringAction };
+module.exports = { createWorkbenchServer, parseWorldRequest, parseStudioRequest, integerParam, numberParam, textParam, readBody, applySimulationAction, applyAuthoringAction };
