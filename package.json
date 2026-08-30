@@ -1,0 +1,23 @@
+{
+  "name": "small-world",
+  "version": "0.6.0",
+  "private": true,
+  "description": "Bounded generative-world architecture lab for Catalyst Core",
+  "scripts": {
+    "world": "node scripts/world.js",
+    "workbench": "node scripts/workbench.js",
+    "test": "node tests/m0.5-baseline.test.js && node tests/dragon-lifecycle.test.js && node tests/dag-solver.test.js && node tests/horizontal-world.test.js && node tests/instruments.test.js && node tests/inspection.test.js && node tests/certification.test.js && node tests/owner-qa.test.js && node tests/app-interface.test.js",
+    "verify:m0.5": "node tests/m0.5-baseline.test.js",
+    "verify:dragon": "node tests/dragon-lifecycle.test.js",
+    "verify:dag": "node tests/dag-solver.test.js",
+    "verify:world": "node tests/horizontal-world.test.js",
+    "verify:instruments": "node tests/instruments.test.js",
+    "verify:inspection": "node tests/inspection.test.js",
+    "verify:certification": "node tests/certification.test.js",
+    "verify:owner-qa": "node tests/owner-qa.test.js",
+    "verify:app": "node tests/app-interface.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

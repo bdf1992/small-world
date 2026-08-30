@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Small World — M0.6 Workbench</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">M0.6 · bounded generative world</p>
+        <h1>Small World</h1>
+      </div>
+      <div class="status-cluster" aria-live="polite">
+        <span id="status" class="status">resolving</span>
+        <span id="usage" class="usage"></span>
+      </div>
+    </header>
+
+    <section class="world-frame" aria-label="Small World map">
+      <div class="map-surface" id="map-surface">
+        <svg id="paths" class="paths" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div id="regions" class="regions"></div>
+        <div class="map-caption">The map is a projection. World rules remain in the engine.</div>
+      </div>
+
+      <aside id="inspector" class="inspector" aria-label="Selected object inspector">
+        <div class="inspector-empty">
+          <span class="sigil">◇</span>
+          <p>Select anything in the world.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section id="frontier" class="frontier" aria-live="polite"></section>
+
+    <form id="world-controls" class="world-controls">
+      <label>Seed <input id="seed" name="seed" type="number" min="0" value="93208"></label>
+      <label>Hops <input id="hops" name="hops" type="number" min="0" value="4"></label>
+      <label>Slots <input id="slots" name="slots" type="number" min="0" value="6"></label>
+      <label>Instances <input id="instances" name="instances" type="number" min="0" value="9"></label>
+      <button type="submit">Resolve</button>
+    </form>
+  </main>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
