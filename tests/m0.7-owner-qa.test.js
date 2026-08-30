@@ -65,7 +65,8 @@ async function main() {
     let trace = authoredTrace(authoring, 'persona.ice-dragon');
     assert.ok(trace, 'authored Ice Dragon must land in the resolved world');
     assert.strictEqual(trace.pack?.id, 'pack.spire');
-    assert.strictEqual(trace.pack?.slot?.role, 'guardian');
+    assert.strictEqual(trace.pack?.slot, 'guardian');
+    assert.strictEqual(trace.pack?.slotId, 'pack.spire.slot.guardian');
     assert.strictEqual(trace.pack?.requirement?.accepts, 'Artifact/Persona');
     assert.strictEqual(trace.region?.id, 'mountains');
     assert.strictEqual(trace.lifecycle?.at(-1)?.stage, 'instance');
@@ -124,7 +125,7 @@ async function main() {
       authoredLanding: {
         card: trace.card.id,
         pack: trace.pack.id,
-        slot: trace.pack.slot.role,
+        slot: trace.pack.slot,
         region: trace.region.id,
       },
       budgetStop: 'budget.maxInstances',
