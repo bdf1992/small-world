@@ -44,7 +44,7 @@ async function main() {
     const initialResult = await json(`${base}/api/authoring?seed=93208`);
     assert.strictEqual(initialResult.response.status, 200);
     const projection = initialResult.value;
-    assert.strictEqual(projection.projectionVersion, 5);
+    assert.strictEqual(projection.projectionVersion, 6);
     assert.strictEqual(projection.seed, 93208);
     assert.strictEqual(projection.revision, 0);
     assert.strictEqual(projection.resolutionRevision, 0);
@@ -55,6 +55,8 @@ async function main() {
     assert.strictEqual(projection.views.pack.root, 'pack.spire');
     assert.strictEqual(projection.views.graph.type, 'Scenario');
     assert.strictEqual(projection.views.resolution.type, 'Resolution');
+    assert.strictEqual(projection.views.landing.type, 'WorldLanding');
+    assert.strictEqual(projection.landing.state, 'resolved');
     assert.strictEqual(projection.views.world.status, 'resolved');
     assert.strictEqual(guardianLabel(projection), 'Dragon');
 
@@ -107,6 +109,7 @@ async function main() {
       editedGuardian: guardianLabel(edit.value),
       graphTuples: graph.tuples.length,
       resolutionTuples: projection.views.resolution.tuples.length,
+      landingTuples: projection.views.landing.tuples.length,
       worldObjects: Object.keys(projection.views.world.objects).length,
     }, null, 2));
   } finally {
