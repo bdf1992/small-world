@@ -9,6 +9,7 @@ const { virtualizeCard, realizeCard } = require('./card-library');
 const { createAuthoringSession, resolvedPackMembers } = require('./authoring-session');
 const { rootedTree } = require('../model/tuple-graph');
 const { withFrontierGraph } = require('./resolution-frontier');
+const { createWorldLanding } = require('./world-lineage');
 const {
   createAuthoringDocument,
   serializeAuthoringDocument,
@@ -123,21 +124,34 @@ class ResolutionAuthoringSession {
     ]));
     const graph = resolvedScenarioGraph({ pack, region: context, cards: scenarioCards, members: memberTemplates });
     const bounded = withFrontierGraph(resolutionGraph(world), world);
+    const landing = createWorldLanding({
+      world,
+      templateRegistry,
+      authoredCards: this.authoring.cards,
+      authoredPackIds: [spire.id],
+    });
 
     return Object.freeze({
       ...base,
-      projectionVersion: 5,
+      projectionVersion: 6,
       resolutionRevision: this.resolutionRevision,
       resolution: bounded.frontier,
+      landing: Object.freeze({
+        state: landing.state,
+        traceable: landing.traceable,
+        byObject: landing.byObject,
+      }),
       views: Object.freeze({
         ...base.views,
         graph,
         resolution: bounded.graph,
+        landing: landing.graph,
         world,
       }),
       trees: Object.freeze({
         ...base.trees,
         scenario: rootedTree(graph, graph.root, { maxDepth: 8 }),
+        landing: landing.tree,
       }),
     });
   }
