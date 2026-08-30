@@ -6,7 +6,7 @@
   "scripts": {
     "world": "node scripts/world.js",
     "workbench": "node scripts/workbench.js",
-    "test": "node tests/m0.5-baseline.test.js && node tests/dragon-lifecycle.test.js && node tests/dag-solver.test.js && node tests/horizontal-world.test.js && node tests/instruments.test.js && node tests/inspection.test.js && node tests/certification.test.js && node tests/owner-qa.test.js && node tests/app-interface.test.js && node tests/parity-restoration.test.js && node --check web/parity.js && node --check web/inspector.js && node tests/workbench-parity-http.test.js && node tests/tuple-graph.test.js && node --check web/authoring.js && node tests/authoring-workbench.test.js",
+    "test": "node tests/m0.5-baseline.test.js && node tests/dragon-lifecycle.test.js && node tests/dag-solver.test.js && node tests/horizontal-world.test.js && node tests/instruments.test.js && node tests/inspection.test.js && node tests/certification.test.js && node tests/owner-qa.test.js && node tests/app-interface.test.js && node tests/parity-restoration.test.js && node --check web/parity.js && node --check web/inspector.js && node tests/workbench-parity-http.test.js && node tests/tuple-graph.test.js && node tests/authoring-edit.test.js && node --check web/authoring.js && node tests/authoring-workbench.test.js",
     "verify:m0.5": "node tests/m0.5-baseline.test.js",
     "verify:dragon": "node tests/dragon-lifecycle.test.js",
     "verify:dag": "node tests/dag-solver.test.js",
@@ -17,7 +17,7 @@
     "verify:owner-qa": "node tests/owner-qa.test.js",
     "verify:app": "node tests/app-interface.test.js",
     "verify:parity": "node tests/parity-restoration.test.js && node --check web/parity.js && node --check web/inspector.js && node tests/workbench-parity-http.test.js",
-    "verify:graph": "node tests/tuple-graph.test.js && node --check web/authoring.js && node tests/authoring-workbench.test.js"
+    "verify:graph": "node tests/tuple-graph.test.js && node tests/authoring-edit.test.js && node --check web/authoring.js && node tests/authoring-workbench.test.js"
   },
   "engines": {
     "node": ">=20"
