@@ -1,0 +1,13 @@
+{
+  "name": "small-world",
+  "version": "0.6.0-alpha.1",
+  "private": true,
+  "description": "Bounded generative-world architecture lab for Catalyst Core",
+  "scripts": {
+    "test": "node tests/m0.5-baseline.test.js",
+    "verify:m0.5": "node tests/m0.5-baseline.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
