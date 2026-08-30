@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Small World Studio</title>
+  <link rel="stylesheet" href="/studio.css">
+</head>
+<body>
+  <div class="studio-shell">
+    <aside class="utility-rail">
+      <div class="brand-mark" aria-label="Small World">SW</div>
+      <nav aria-label="Studio utilities">
+        <button class="utility active" data-utility="explore"><span class="utility-glyph">◎</span><span>Explore</span></button>
+        <button class="utility" data-utility="generate"><span class="utility-glyph">◇</span><span>Generate</span></button>
+        <button class="utility" data-utility="compose"><span class="utility-glyph">⌘</span><span>Compose</span></button>
+        <button class="utility" data-utility="resolve"><span class="utility-glyph">◈</span><span>Resolve</span></button>
+        <button class="utility" data-utility="name"><span class="utility-glyph">Aa</span><span>Name</span></button>
+        <button class="utility" data-utility="inspect"><span class="utility-glyph">⋯</span><span>Inspect</span></button>
+      </nav>
+      <a class="world-link" href="/" title="Open playable world">↗ World</a>
+    </aside>
+
+    <main class="studio-main">
+      <header class="studio-topbar">
+        <div>
+          <p class="kicker">Small World · generative studio</p>
+          <h1 id="utilityTitle">Explore</h1>
+          <p id="utilityDescription" class="utility-description">See the current context and what the system has made.</p>
+        </div>
+        <div class="session-controls">
+          <label><span>Seed</span><input id="seed" type="number" min="0" value="93208"></label>
+          <button id="regenerate" type="button">Regenerate</button>
+        </div>
+      </header>
+
+      <section id="generatorControls" class="generator-controls" hidden>
+        <div class="segmented" role="group" aria-label="Generator kind">
+          <button data-kind="persona" class="active">Persona</button>
+          <button data-kind="item">Item</button>
+          <button data-kind="biome">Biome</button>
+          <button data-kind="situation">Situation</button>
+        </div>
+        <label class="profile-control"><span>Shape</span><select id="profile"></select></label>
+        <div id="profileHint" class="profile-hint"></div>
+      </section>
+
+      <section id="stage" class="stage" aria-live="polite"></section>
+
+      <footer class="studio-footer">
+        <div class="model-key">
+          <span><b>Card</b> generates possibility</span>
+          <span><b>Pack</b> composes possibility</span>
+          <span><b>Token</b> names an outcome</span>
+        </div>
+        <span id="status" class="status">Ready</span>
+      </footer>
+    </main>
+  </div>
+  <script src="/studio.js" defer></script>
+</body>
+</html>
