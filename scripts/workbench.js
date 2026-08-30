@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { resolveWorld, DEFAULTS } = require('../src/app/world');
 const { createSimulationSession } = require('../src/app/simulation');
+const { createAuthoringProjection } = require('../src/app/authoring');
 
 const WEB_ROOT = path.join(__dirname, '..', 'web');
 
@@ -76,6 +77,11 @@ function createWorkbenchServer({ simulation = createSimulationSession({ seed: DE
       if (url.pathname === '/api/world') {
         return sendJson(res, 200, resolveWorld(parseWorldRequest(url)));
       }
+      if (url.pathname === '/api/authoring') {
+        return sendJson(res, 200, createAuthoringProjection({
+          seed: integerParam(url.searchParams, 'seed', DEFAULTS.seed),
+        }));
+      }
       if (url.pathname === '/api/simulation') return sendJson(res, 200, simulation.snapshot());
       if (url.pathname.startsWith('/api/simulation/')) {
         return sendJson(res, 200, applySimulationAction(simulation, url));
@@ -83,10 +89,13 @@ function createWorkbenchServer({ simulation = createSimulationSession({ seed: DE
       if (url.pathname === '/' || url.pathname === '/index.html') {
         return serveFile(res, 'parity.html', 'text/html');
       }
+      if (url.pathname === '/authoring') return serveFile(res, 'authoring.html', 'text/html');
       if (url.pathname === '/classic') return serveFile(res, 'index.html', 'text/html');
       if (url.pathname === '/parity.js') return serveFile(res, 'parity.js', 'text/javascript');
       if (url.pathname === '/inspector.js') return serveFile(res, 'inspector.js', 'text/javascript');
       if (url.pathname === '/parity.css') return serveFile(res, 'parity.css', 'text/css');
+      if (url.pathname === '/authoring.js') return serveFile(res, 'authoring.js', 'text/javascript');
+      if (url.pathname === '/authoring.css') return serveFile(res, 'authoring.css', 'text/css');
       if (url.pathname === '/app.js') return serveFile(res, 'app.js', 'text/javascript');
       if (url.pathname === '/style.css') return serveFile(res, 'style.css', 'text/css');
       return send(res, 404, 'not found', 'text/plain');
@@ -102,8 +111,9 @@ function main() {
   const server = createWorkbenchServer();
   server.listen(port, '127.0.0.1', () => {
     const address = server.address();
-    console.log(`Small World parity workbench: http://127.0.0.1:${address.port}`);
-    console.log('The legacy M0.5 mechanics are behind the application session; browser code owns presentation only.');
+    console.log(`Small World workbench: http://127.0.0.1:${address.port}`);
+    console.log(`Authoring & Resolution: http://127.0.0.1:${address.port}/authoring`);
+    console.log('World rules remain behind application ports; browser code owns presentation only.');
     console.log('Press Ctrl+C to stop.');
   });
 }
