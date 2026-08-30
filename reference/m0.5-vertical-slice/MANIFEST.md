@@ -19,10 +19,8 @@ d5b825d5a7ff5db732fe57069eb38a4ad1a209ebd35ea7e1e9e9e6de7a892e74  ENGINEERING-GO
 296c36127b695272e2a5e0dd409edc1566a5cc523fc785ba614221d2395c1a66  M0.5-VALIDATION.md
 c828fe4d34f956b377f6b73ec828622da0732b744685eedd3a217c12d51d6daa  index.html
 94aa4e69c935dc790ddfbeadf0aa79f59bc8dea67c0a9b04c3d7262ca97e3a87  sample-ledger-93208.json
-f1346bc2e1bc04b6c32ba682d418ff2163044fc6cd3abf1c556afd05f8ef6  test-runtime.js
+f1346bc2e1bc04b04f6c32ba682d418ff2163044fc6cd3abf1c556afd05f8ef6  test-runtime.js
 ```
-
-> Note: the `test-runtime.js` hash above is preserved exactly from the source calculation used during repository seeding. Any later imported file must be verified against the actual source bytes before being declared identical.
 
 ## M0.5 causal spine to preserve
 
