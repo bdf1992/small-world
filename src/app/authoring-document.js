@@ -5,6 +5,9 @@ const { validateCardDraft } = require('./card-library');
 
 const FORMAT = 'small-world.authoring';
 const VERSION = 1;
+const TOP_LEVEL_KEYS = Object.freeze(['format', 'version', 'cards', 'packs']);
+const CARD_KEYS = Object.freeze(['id', 'grammar', 'fixed', 'priors', 'rules', 'slots']);
+const PACK_KEYS = Object.freeze(['id', 'grammar', 'fixed', 'priors', 'rules', 'slots']);
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -24,6 +27,18 @@ function sortedObject(value) {
 
 function stableStringify(value, space = 2) {
   return JSON.stringify(sortedObject(value), null, space);
+}
+
+function sameValue(left, right) {
+  return stableStringify(left, 0) === stableStringify(right, 0);
+}
+
+function rejectUnknownKeys(value, allowed, path, errors) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+  const allowedSet = new Set(allowed);
+  for (const key of Object.keys(value)) {
+    if (!allowedSet.has(key)) errors.push(`${path} contains unsupported field ${key}`);
+  }
 }
 
 function createAuthoringDocument(session) {
@@ -54,11 +69,21 @@ function validatePack(pack, cards, errors) {
     errors.push(`${spireTemplate.id} must be an object`);
     return;
   }
+  rejectUnknownKeys(pack, PACK_KEYS, spireTemplate.id, errors);
   if (pack.id !== spireTemplate.id) errors.push(`${spireTemplate.id}.id must be ${spireTemplate.id}`);
   if (pack.grammar !== spireTemplate.grammar) errors.push(`${spireTemplate.id}.grammar must be ${spireTemplate.grammar}`);
+  if (!sameValue(pack.fixed, spireTemplate.fixed)) errors.push(`${spireTemplate.id}.fixed is canonical in Authoring Document v1`);
+  if (!sameValue(pack.priors, spireTemplate.priors)) errors.push(`${spireTemplate.id}.priors is canonical in Authoring Document v1`);
+  if (!sameValue(pack.rules, spireTemplate.rules)) errors.push(`${spireTemplate.id}.rules is canonical in Authoring Document v1`);
   if (!pack.slots || typeof pack.slots !== 'object' || Array.isArray(pack.slots)) {
     errors.push(`${spireTemplate.id}.slots must be an object`);
     return;
+  }
+
+  const canonicalSlots = Object.keys(spireTemplate.slots).sort();
+  const documentSlots = Object.keys(pack.slots).sort();
+  if (!sameValue(documentSlots, canonicalSlots)) {
+    errors.push(`${spireTemplate.id}.slots must remain ${canonicalSlots.join(', ')} in Authoring Document v1`);
   }
 
   for (const [slot, spec] of Object.entries(pack.slots)) {
@@ -66,9 +91,12 @@ function validatePack(pack, cards, errors) {
       errors.push(`${spireTemplate.id}.slots.${slot} must be an object`);
       continue;
     }
-    if (typeof spec.accepts !== 'string' || !spec.accepts) errors.push(`${spireTemplate.id}.slots.${slot}.accepts must be a grammar`);
+    const canonical = spireTemplate.slots[slot];
+    if (!canonical) continue;
+    if (spec.accepts !== canonical.accepts) errors.push(`${spireTemplate.id}.slots.${slot}.accepts is canonical in Authoring Document v1`);
     const count = Number(spec.count ?? 1);
     if (!Number.isInteger(count) || count < 1) errors.push(`${spireTemplate.id}.slots.${slot}.count must be a positive integer`);
+    if (count !== Number(canonical.count ?? 1)) errors.push(`${spireTemplate.id}.slots.${slot}.count is canonical in Authoring Document v1`);
     if (!spec.candidates || typeof spec.candidates !== 'object' || Array.isArray(spec.candidates)) {
       errors.push(`${spireTemplate.id}.slots.${slot}.candidates must be an object`);
       continue;
@@ -98,6 +126,7 @@ function validateAuthoringDocument(document) {
   if (!document || typeof document !== 'object' || Array.isArray(document)) {
     return Object.freeze({ valid: false, errors: Object.freeze(['Authoring Document must be an object']) });
   }
+  rejectUnknownKeys(document, TOP_LEVEL_KEYS, 'document', errors);
   if (document.format !== FORMAT) errors.push(`format must be ${FORMAT}`);
   if (document.version !== VERSION) errors.push(`version must be ${VERSION}`);
 
@@ -109,6 +138,7 @@ function validateAuthoringDocument(document) {
     if (!ids.length) errors.push('cards must contain at least one Card');
     if (!cards[dragonTemplate.id]) errors.push(`cards must retain canonical ${dragonTemplate.id} while M0.6 parity is under custody`);
     for (const [id, card] of Object.entries(cards)) {
+      rejectUnknownKeys(card, CARD_KEYS, `cards.${id}`, errors);
       if (card?.id !== id) errors.push(`Card key ${id} must equal card.id`);
       const validation = validateCardDraft(card ?? {});
       for (const error of validation.errors) errors.push(`cards.${id}: ${error}`);
