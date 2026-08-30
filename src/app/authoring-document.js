@@ -19,18 +19,52 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
-function sortedObject(value) {
-  if (Array.isArray(value)) return value.map(sortedObject);
+function sortedValue(value) {
+  if (Array.isArray(value)) return value.map(sortedValue);
   if (!value || typeof value !== 'object') return value;
-  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortedObject(value[key])]));
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortedValue(value[key])]));
+}
+
+function canonicalCard(card) {
+  return {
+    id: card.id,
+    grammar: card.grammar,
+    fixed: clone(card.fixed),
+    priors: clone(card.priors),
+    rules: clone(card.rules),
+    slots: clone(card.slots),
+  };
+}
+
+function canonicalPack(pack) {
+  return {
+    id: pack.id,
+    grammar: pack.grammar,
+    fixed: clone(pack.fixed),
+    priors: clone(pack.priors),
+    rules: clone(pack.rules),
+    slots: clone(pack.slots),
+  };
+}
+
+function canonicalDocumentShape(document) {
+  return {
+    format: document.format,
+    version: document.version,
+    cards: Object.fromEntries(Object.keys(document.cards ?? {}).sort().map((id) => [id, canonicalCard(document.cards[id])])),
+    packs: Object.fromEntries(Object.keys(document.packs ?? {}).sort().map((id) => [id, canonicalPack(document.packs[id])])),
+  };
 }
 
 function stableStringify(value, space = 2) {
-  return JSON.stringify(sortedObject(value), null, space);
+  const ordered = value?.format === FORMAT && value?.cards && value?.packs
+    ? canonicalDocumentShape(value)
+    : sortedValue(value);
+  return JSON.stringify(ordered, null, space);
 }
 
 function sameValue(left, right) {
-  return stableStringify(left, 0) === stableStringify(right, 0);
+  return JSON.stringify(sortedValue(left)) === JSON.stringify(sortedValue(right));
 }
 
 function rejectUnknownKeys(value, allowed, path, errors) {
