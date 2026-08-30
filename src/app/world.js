@@ -91,6 +91,16 @@ function projectWorld({ compiled, solve }) {
   const objectMap = new Map();
   const regionChildren = new Map();
   const regions = [...compiled.regionGraph.byId.values()];
+  const virtualById = new Map(
+    solve.trace
+      .filter((entry) => entry.state === 'resolved' && entry.value?.stage === 'virtual')
+      .map((entry) => [entry.value.id, entry.value]),
+  );
+
+  function possibilityForInstance(instance) {
+    const virtual = virtualById.get(instance?.virtualId);
+    return virtual ? inspect(virtual).possibilities : null;
+  }
 
   function add(object) {
     objectMap.set(object.key, object);
@@ -122,7 +132,7 @@ function projectWorld({ compiled, solve }) {
             referenceId: member.referenceId,
             definitionId: member.definitionId,
           }),
-          possibilities: memberInspection.possibilities,
+          possibilities: possibilityForInstance(member) ?? memberInspection.possibilities,
           lineage: memberInspection.lineage,
         });
         add(memberObject);
@@ -146,7 +156,7 @@ function projectWorld({ compiled, solve }) {
           definitionId: situation.definitionId,
           relations: situation.relations ?? [],
         }),
-        possibilities: situationInspection.possibilities,
+        possibilities: possibilityForInstance(situation) ?? situationInspection.possibilities,
         lineage: situationInspection.lineage,
         children: situationChildren,
       }));
