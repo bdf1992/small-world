@@ -145,11 +145,13 @@ function createWorkbenchServer({
       if (url.pathname === '/pack-editor.js') return serveFile(res, 'pack-editor.js', 'text/javascript');
       if (url.pathname === '/resolution-editor.js') return serveFile(res, 'resolution-editor.js', 'text/javascript');
       if (url.pathname === '/document-editor.js') return serveFile(res, 'document-editor.js', 'text/javascript');
+      if (url.pathname === '/world-lineage.js') return serveFile(res, 'world-lineage.js', 'text/javascript');
       if (url.pathname === '/authoring.css') return serveFile(res, 'authoring.css', 'text/css');
       if (url.pathname === '/card-editor.css') return serveFile(res, 'card-editor.css', 'text/css');
       if (url.pathname === '/pack-editor.css') return serveFile(res, 'pack-editor.css', 'text/css');
       if (url.pathname === '/resolution-editor.css') return serveFile(res, 'resolution-editor.css', 'text/css');
       if (url.pathname === '/document-editor.css') return serveFile(res, 'document-editor.css', 'text/css');
+      if (url.pathname === '/world-lineage.css') return serveFile(res, 'world-lineage.css', 'text/css');
       if (url.pathname === '/app.js') return serveFile(res, 'app.js', 'text/javascript');
       if (url.pathname === '/style.css') return serveFile(res, 'style.css', 'text/css');
       return send(res, 404, 'not found', 'text/plain');
@@ -169,6 +171,7 @@ function main() {
     console.log(`Authoring & Resolution: http://127.0.0.1:${address.port}/authoring`);
     console.log('Card and Pack edits change authored revision; Hops / Slots / Instances change only resolution revision.');
     console.log('Authoring Document export/import is plain-data JSON and excludes runtime/lifecycle state.');
+    console.log('World landing traces realized objects backward to Card / Pack / Requirement / Region custody.');
     console.log('Press Ctrl+C to stop.');
   });
 }
