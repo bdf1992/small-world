@@ -93,6 +93,23 @@ function solveGraph({ graph, target, budget, context = {} }) {
       return result;
     }
 
+    // Resolve upstream causes before applying materialization budgets. This means
+    // maxInstances=0 can still produce a complete Virtual frontier rather than
+    // hiding the possibility state simply because realization is disallowed.
+    const inputs = Object.fromEntries(
+      node.inputs.map((inputId) => [inputId, resolveNode(inputId)]),
+    );
+    const blocked = Object.values(inputs).filter((input) => input.state !== 'resolved');
+    if (blocked.length) {
+      const result = unresolved(node, 'input.unresolved', {
+        inputs,
+        blockedBy: blocked.map((input) => input.nodeId),
+      });
+      memo.set(id, result);
+      trace.push(result);
+      return result;
+    }
+
     if (node.slotCost > 0 && state.slots + node.slotCost > budget.maxSlots) {
       const record = stop(state, 'budget.maxSlots', {
         nodeId: id,
@@ -121,20 +138,6 @@ function solveGraph({ graph, target, budget, context = {} }) {
         requested: node.instanceCost,
         used: state.instances,
         limit: budget.maxInstances,
-      });
-      memo.set(id, result);
-      trace.push(result);
-      return result;
-    }
-
-    const inputs = Object.fromEntries(
-      node.inputs.map((inputId) => [inputId, resolveNode(inputId)]),
-    );
-    const blocked = Object.values(inputs).filter((input) => input.state !== 'resolved');
-    if (blocked.length) {
-      const result = unresolved(node, 'input.unresolved', {
-        inputs,
-        blockedBy: blocked.map((input) => input.nodeId),
       });
       memo.set(id, result);
       trace.push(result);
