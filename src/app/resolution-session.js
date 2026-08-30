@@ -9,6 +9,12 @@ const { virtualizeCard, realizeCard } = require('./card-library');
 const { createAuthoringSession, resolvedPackMembers } = require('./authoring-session');
 const { rootedTree } = require('../model/tuple-graph');
 const { withFrontierGraph } = require('./resolution-frontier');
+const {
+  createAuthoringDocument,
+  serializeAuthoringDocument,
+  parseAuthoringDocument,
+  applyAuthoringDocument,
+} = require('./authoring-document');
 
 function normalizeBudget(input = {}) {
   const source = input ?? {};
@@ -49,6 +55,20 @@ class ResolutionAuthoringSession {
   resetBudget() {
     this.budget = normalizeBudget(DEFAULTS.budget);
     this.resolutionRevision += 1;
+    return this.snapshot();
+  }
+
+  exportDocument() {
+    return createAuthoringDocument(this.authoring);
+  }
+
+  serializeDocument() {
+    return serializeAuthoringDocument(this.authoring);
+  }
+
+  importDocument(input) {
+    const document = typeof input === 'string' ? parseAuthoringDocument(input) : input;
+    applyAuthoringDocument(this.authoring, document);
     return this.snapshot();
   }
 
