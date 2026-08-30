@@ -38,6 +38,36 @@
           </div>
           <div id="metrics" class="metrics"></div>
         </div>
+
+        <section id="cardWorkshop" class="card-workshop" aria-label="Card library">
+          <div class="card-library-bar">
+            <label>Card <select id="cardSelect"></select></label>
+            <label>Id <input id="cardId" type="text" value="persona.ice-dragon" spellcheck="false"></label>
+            <label>Kind
+              <select id="cardGrammar">
+                <option value="Artifact/Persona">Persona</option>
+                <option value="Artifact/Item">Item</option>
+                <option value="Artifact/Biome">Biome</option>
+              </select>
+            </label>
+            <button id="newCard" type="button">New</button>
+            <button id="cloneCard" type="button">Clone</button>
+            <button id="renameCard" type="button">Rename</button>
+            <button id="deleteCard" type="button">Delete</button>
+          </div>
+          <div class="card-editor-grid">
+            <div>
+              <p class="eyebrow">Draft</p>
+              <div id="cardFields" class="card-fields"></div>
+            </div>
+            <div>
+              <p class="eyebrow">Resolved preview · Mountains</p>
+              <div id="cardPreview" class="card-preview"></div>
+            </div>
+          </div>
+          <p id="cardStatus" class="muted card-status">Card edits compile through the application authoring port.</p>
+        </section>
+
         <div id="semantic" class="semantic"></div>
         <div id="graphWrap" class="graph-wrap" hidden>
           <div class="graph-toolbar">
@@ -63,11 +93,13 @@
       <span><i class="dot structural"></i>Structure</span>
       <span><i class="dot authoring"></i>Authoring</span>
       <span><i class="dot constraint"></i>Requirement</span>
-      <span><i class="dot dynamic"></i>Signal / Influence</span>
+      <span><i class="dot dynamic"></i>Signal</span>
+      <span><i class="dot dynamic"></i>Influence</span>
       <span><i class="dot derivation"></i>Resolution</span>
       <span><i class="dot evidence"></i>Evidence</span>
     </footer>
   </main>
   <script src="/authoring.js" defer></script>
+  <script src="/card-editor.js" defer></script>
 </body>
 </html>
