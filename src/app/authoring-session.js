@@ -16,6 +16,14 @@ const {
   scenarioGraph,
   resolutionGraph,
 } = require('./authoring');
+const {
+  AFFINITIES,
+  defaultCardDraft,
+  cardDraftFromTemplate,
+  validateCardDraft,
+  buildCardTemplate,
+  resolveCardDraft,
+} = require('./card-library');
 const { rootedTree } = require('../model/tuple-graph');
 
 function clone(value) {
@@ -37,6 +45,10 @@ function ensureSupport(weights) {
   throw new Error('weighted possibility must retain at least one supported candidate');
 }
 
+function cardIdentity(card) {
+  return card.fixed?.species ?? card.fixed?.form ?? card.fixed?.terrain ?? card.id;
+}
+
 class AuthoringSession {
   constructor({ seed = 93208 } = {}) {
     this.reset(seed);
@@ -46,53 +58,139 @@ class AuthoringSession {
     if (!Number.isInteger(seed) || seed < 0) throw new Error('seed must be a non-negative integer');
     this.seed = seed;
     this.revision = 0;
-    this.dragon = {
-      priors: clone(dragonTemplate.priors),
+    this.cards = {
+      [dragonTemplate.id]: cardDraftFromTemplate(dragonTemplate),
     };
+    this.selectedCardId = dragonTemplate.id;
     this.spire = {
       slots: clone(spireTemplate.slots),
     };
     return this.snapshot();
   }
 
-  setWeight({ target, field, candidate, weight }) {
+  card(cardId = this.selectedCardId) {
+    const draft = this.cards[cardId];
+    if (!draft) throw new Error(`unknown Card: ${cardId}`);
+    return draft;
+  }
+
+  selectCard({ cardId }) {
+    this.card(cardId);
+    this.selectedCardId = cardId;
+    return this.snapshot();
+  }
+
+  createCard({ grammar = 'Artifact/Persona', id }) {
+    if (this.cards[id]) throw new Error(`Card already exists: ${id}`);
+    const draft = defaultCardDraft({ grammar, id });
+    const validation = validateCardDraft(draft, { existingIds: [...Object.keys(this.cards), id] });
+    if (!validation.valid) throw new Error(validation.errors.join('; '));
+    this.cards[id] = draft;
+    this.selectedCardId = id;
+    this.revision += 1;
+    return this.snapshot();
+  }
+
+  cloneCard({ cardId = this.selectedCardId, newId }) {
+    const source = this.card(cardId);
+    if (this.cards[newId]) throw new Error(`Card already exists: ${newId}`);
+    const copy = clone(source);
+    copy.id = newId;
+    const validation = validateCardDraft(copy, { existingIds: [...Object.keys(this.cards), newId] });
+    if (!validation.valid) throw new Error(validation.errors.join('; '));
+    this.cards[newId] = copy;
+    this.selectedCardId = newId;
+    this.revision += 1;
+    return this.snapshot();
+  }
+
+  renameCard({ cardId = this.selectedCardId, newId }) {
+    if (cardId === dragonTemplate.id) throw new Error('canonical Dragon Card id cannot be renamed');
+    const draft = this.card(cardId);
+    if (this.cards[newId]) throw new Error(`Card already exists: ${newId}`);
+    const next = clone(draft);
+    next.id = newId;
+    const validation = validateCardDraft(next, { existingIds: [...Object.keys(this.cards).filter((id) => id !== cardId), newId] });
+    if (!validation.valid) throw new Error(validation.errors.join('; '));
+    delete this.cards[cardId];
+    this.cards[newId] = next;
+    this.selectedCardId = newId;
+    this.revision += 1;
+    return this.snapshot();
+  }
+
+  deleteCard({ cardId = this.selectedCardId }) {
+    if (cardId === dragonTemplate.id) throw new Error('canonical Dragon Card cannot be deleted');
+    this.card(cardId);
+    delete this.cards[cardId];
+    this.selectedCardId = dragonTemplate.id;
+    this.revision += 1;
+    return this.snapshot();
+  }
+
+  setCardFixed({ cardId = this.selectedCardId, field, value }) {
+    const draft = this.card(cardId);
+    if (!Object.prototype.hasOwnProperty.call(draft.fixed ?? {}, field)) throw new Error(`unknown fixed Card field: ${field}`);
+    if (typeof value !== 'string' || !value.trim()) throw new Error(`${field} must be a non-empty string`);
+    draft.fixed[field] = value.trim();
+    const validation = validateCardDraft(draft);
+    if (!validation.valid) throw new Error(validation.errors.join('; '));
+    this.revision += 1;
+    return this.snapshot();
+  }
+
+  setCardWeight({ cardId = this.selectedCardId, field, candidate, weight }) {
+    const draft = this.card(cardId);
+    const prior = draft.priors[field];
+    if (!prior || prior.source === 'context') throw new Error(`Card field is not directly weighted: ${field}`);
+    assertSupported(prior, candidate);
     const next = finiteWeight(weight);
+    const previous = prior[candidate];
+    prior[candidate] = next;
+    try { ensureSupport(prior); } catch (error) { prior[candidate] = previous; throw error; }
+    this.revision += 1;
+    return this.snapshot();
+  }
+
+  setCardAffinity({ cardId = this.selectedCardId, field = 'element', affinity }) {
+    const draft = this.card(cardId);
+    const prior = draft.priors[field];
+    if (!prior || prior.source !== 'context') throw new Error(`Card field is not contextual: ${field}`);
+    if (!AFFINITIES.includes(affinity)) throw new Error('affinity must be weak, medium, or strong');
+    prior.affinity = affinity;
+    this.revision += 1;
+    return this.snapshot();
+  }
+
+  setWeight({ target, field, candidate, weight }) {
     if (target === 'dragon') {
-      const prior = this.dragon.priors[field];
-      if (!prior || prior.source === 'context') throw new Error(`Dragon field is not directly weighted: ${field}`);
-      assertSupported(prior, candidate);
-      const previous = prior[candidate];
-      prior[candidate] = next;
-      try { ensureSupport(prior); } catch (error) { prior[candidate] = previous; throw error; }
-    } else if (target === 'spire') {
+      return this.setCardWeight({ cardId: dragonTemplate.id, field, candidate, weight });
+    }
+    if (target === 'spire') {
       const slot = this.spire.slots[field];
       if (!slot?.candidates) throw new Error(`Spire slot has no candidate weights: ${field}`);
       assertSupported(slot.candidates, candidate);
       const previous = slot.candidates[candidate];
-      slot.candidates[candidate] = next;
+      slot.candidates[candidate] = finiteWeight(weight);
       try { ensureSupport(slot.candidates); } catch (error) { slot.candidates[candidate] = previous; throw error; }
-    } else {
-      throw new Error(`unknown authoring target: ${target}`);
+      this.revision += 1;
+      return this.snapshot();
     }
-    this.revision += 1;
-    return this.snapshot();
+    throw new Error(`unknown authoring target: ${target}`);
   }
 
   setAffinity({ field = 'element', affinity }) {
-    if (field !== 'element') throw new Error(`unsupported contextual field: ${field}`);
-    if (!['weak', 'medium', 'strong'].includes(affinity)) throw new Error('affinity must be weak, medium, or strong');
-    this.dragon.priors.element.affinity = affinity;
-    this.revision += 1;
-    return this.snapshot();
+    return this.setCardAffinity({ cardId: dragonTemplate.id, field, affinity });
   }
 
   buildTemplates() {
+    const dragonDraft = this.cards[dragonTemplate.id];
     const dragon = createTemplate(personaDefinition, {
-      id: dragonTemplate.id,
-      fixed: dragonTemplate.fixed,
-      priors: clone(this.dragon.priors),
-      rules: dragonTemplate.rules,
-      slots: dragonTemplate.slots,
+      id: dragonDraft.id,
+      fixed: clone(dragonDraft.fixed),
+      priors: clone(dragonDraft.priors),
+      rules: clone(dragonDraft.rules),
+      slots: clone(dragonDraft.slots),
     });
     const spire = createTemplate(packDefinition, {
       id: spireTemplate.id,
@@ -111,12 +209,15 @@ class AuthoringSession {
       [dragon.id]: dragon,
       [spire.id]: spire,
     });
-    const card = templateGraph(dragon);
+    const selectedDraft = this.card();
+    const selectedTemplate = buildCardTemplate(selectedDraft);
+    const card = templateGraph(selectedTemplate);
+    const canonicalDragonCard = templateGraph(dragon);
     const pack = templateGraph(spire);
     const { regionGraph: regions } = createStartingRegions(this.seed);
     const mountains = regions.byId.get('mountains');
     const context = regionGraph(mountains);
-    const graph = scenarioGraph({ card, pack, region: context });
+    const graph = scenarioGraph({ card: canonicalDragonCard, pack, region: context });
     const world = resolveWorld({ seed: this.seed }, {
       horizontalWorld: {
         templateRegistry,
@@ -124,9 +225,22 @@ class AuthoringSession {
       },
     });
     const resolution = resolutionGraph(world);
+    const preview = resolveCardDraft(selectedDraft, { seed: this.seed, region: mountains });
+
+    const cards = Object.freeze(Object.fromEntries(Object.entries(this.cards).map(([id, draft]) => {
+      const validation = validateCardDraft(draft);
+      return [id, Object.freeze({
+        id,
+        grammar: draft.grammar,
+        label: cardIdentity(draft),
+        canonical: id === dragonTemplate.id,
+        valid: validation.valid,
+        errors: validation.errors,
+      })];
+    })));
 
     return Object.freeze({
-      projectionVersion: 2,
+      projectionVersion: 3,
       mode: 'authoring-session',
       seed: this.seed,
       revision: this.revision,
@@ -137,15 +251,27 @@ class AuthoringSession {
         lifecycle: Object.freeze(['Definition', 'Template', 'Reference', 'Virtual', 'Instance']),
       }),
       draft: Object.freeze({
-        dragon: Object.freeze({ priors: clone(this.dragon.priors) }),
+        cards: Object.freeze(clone(this.cards)),
+        dragon: Object.freeze({ priors: clone(this.cards[dragonTemplate.id].priors) }),
         spire: Object.freeze({ slots: clone(this.spire.slots) }),
       }),
       editor: Object.freeze({
+        selectedCardId: this.selectedCardId,
+        cards,
         card: Object.freeze({
-          weighted: Object.freeze(['rarity', 'age', 'temperament']),
-          contextual: Object.freeze({ element: Object.freeze(['weak', 'medium', 'strong']) }),
+          weighted: Object.freeze(Object.keys(selectedDraft.priors).filter((field) => selectedDraft.priors[field]?.source !== 'context')),
+          contextual: Object.freeze(Object.fromEntries(Object.entries(selectedDraft.priors)
+            .filter(([, prior]) => prior?.source === 'context')
+            .map(([field]) => [field, AFFINITIES]))),
+          fixed: Object.freeze(Object.keys(selectedDraft.fixed ?? {})),
         }),
         pack: Object.freeze({ weighted: Object.freeze(['guardian', 'treasure']) }),
+      }),
+      preview: Object.freeze({
+        cardId: this.selectedCardId,
+        reference: preview.reference,
+        virtual: preview.virtual,
+        instance: preview.instance,
       }),
       views: Object.freeze({ card, pack, graph, resolution, world }),
       trees: Object.freeze({
