@@ -4,120 +4,113 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  genericPersonaCard,
-  genericItemCard,
-  genericSituationPack,
-  resolveGenerator,
+  ELEMENTS,
+  ARTIFACT_TYPES,
+  CARD_ARTIFACT,
+  createArtifactCard,
+  resolveArtifactCard,
   one,
 } = require('../src/content/generative-authoring');
-const { TOKENS } = require('../src/content/token-packs');
+const { TOKENS, ARTIFACT_KIND_PACK } = require('../src/content/token-packs');
 
-function tokenTexts(result) {
-  return result.instance.tokens.map((token) => token.text);
-}
-
-function sourceTree(root) {
-  return fs.readdirSync(root, { withFileTypes: true }).map((entry) => {
-    const target = path.join(root, entry.name);
-    return entry.isDirectory() ? sourceTree(target) : fs.readFileSync(target, 'utf8');
-  }).flat().join('\n');
+function source(...parts) {
+  return fs.readFileSync(path.join(__dirname, '..', ...parts), 'utf8');
 }
 
 function main() {
-  // Same generic Persona Card identity; different structural priors produce different named outcomes.
-  const dragonRecipe = genericPersonaCard({
-    id: 'card.persona',
-    bodyPlan: one('quadruped'),
-    size: one('large'),
-    mobility: one('flying'),
-    covering: one('scales'),
-    cognition: one('cunning'),
-    armament: one('natural'),
-    age: one('ancient'),
-    temperament: one('territorial'),
-    element: one('Ground'),
-    rarity: one('T4'),
+  assert.strictEqual(CARD_ARTIFACT.id, 'Card.Artifact');
+  assert.strictEqual(CARD_ARTIFACT.grammar, 'Artifact');
+  assert.deepStrictEqual(CARD_ARTIFACT.fixed, {});
+
+  assert.ok(ARTIFACT_TYPES['Artifact.Persona']);
+  assert.strictEqual(ARTIFACT_TYPES['Artifact.Persona'].parent, 'Artifact');
+  assert.deepStrictEqual(
+    ARTIFACT_TYPES['Artifact.Persona'].contract,
+    ['Elements', 'Attributes', 'Properties', 'Stats'],
+  );
+
+  assert.strictEqual(TOKENS.artifactPersona.id, 'Artifact.Persona');
+  assert.strictEqual(ARTIFACT_KIND_PACK.accepts, 'Artifact');
+  assert.deepStrictEqual(
+    ARTIFACT_KIND_PACK.entries.map((entry) => entry.token.id),
+    ['Artifact.Persona'],
+  );
+
+  const card = createArtifactCard({
+    elementCount: one(3),
+    attributeCount: one(2),
+    propertyCount: one(1),
+    statCount: one(2),
   });
-  assert.deepStrictEqual(dragonRecipe.fixed, {}, 'generic Card must not contain Dragon as fixed identity');
-  assert.strictEqual(dragonRecipe.id, 'card.persona');
+  assert.strictEqual(card.id, 'Card.Artifact');
 
-  const dragon = resolveGenerator(dragonRecipe, { seed: 93208, id: 'proof.persona.dragon' });
-  assert.ok(dragon.virtualNaming.tokens.some((token) => token.id === TOKENS.dragon.id), 'Virtual threshold should already recognize Dragon-like possibility');
-  assert.deepStrictEqual(tokenTexts(dragon), ['Stone', 'Dragon']);
-  assert.strictEqual(dragon.instance.name, 'Stone Dragon');
-  assert.strictEqual(dragon.instance.properties.bodyPlan, 'quadruped');
-  assert.strictEqual(dragon.instance.properties.mobility, 'flying');
-  assert.strictEqual(dragon.instance.attributes.element, 'Ground');
-  assert.strictEqual(dragon.instance.templateId, 'card.persona');
-
-  const mantisRecipe = genericPersonaCard({
-    id: 'card.persona',
-    bodyPlan: one('arthropod'),
-    size: one('medium'),
-    mobility: one('grounded'),
-    covering: one('chitin'),
-    cognition: one('instinctive'),
-    armament: one('natural'),
-    age: one('mature'),
-    temperament: one('hunting'),
-    element: one('Chaos'),
-    rarity: one('T2'),
+  const resolved = resolveArtifactCard(card, {
+    seed: 93208,
+    id: 'proof.artifact',
+    elements: {
+      Fire: 0.35,
+      Ground: 0.30,
+      Sky: 0.20,
+      Water: 0.15,
+    },
   });
-  const mantis = resolveGenerator(mantisRecipe, { seed: 93208, id: 'proof.persona.mantis' });
-  assert.deepStrictEqual(tokenTexts(mantis), ['Wild', 'Mantis']);
-  assert.strictEqual(mantis.instance.name, 'Wild Mantis');
-  assert.strictEqual(mantis.instance.templateId, 'card.persona');
 
-  const lanternRecipe = genericItemCard({
-    id: 'card.item',
-    geometry: one('vessel'),
-    function: one('light'),
-    scale: one('hand'),
-    material: one('metal'),
-    element: one('Fire'),
-    rarity: one('T2'),
+  assert.strictEqual(resolved.virtual.stage, 'virtual');
+  assert.deepStrictEqual(
+    Object.keys(resolved.virtual.possibilities).sort(),
+    ['attributeCount', 'elementCount', 'elements', 'kind', 'propertyCount', 'statCount'].sort(),
+  );
+
+  const artifact = resolved.instance;
+  assert.strictEqual(artifact.stage, 'instance');
+  assert.strictEqual(artifact.kind, 'Artifact.Persona');
+  assert.strictEqual(artifact.templateId, 'Card.Artifact');
+  assert.strictEqual(artifact.grammar, 'Artifact');
+  assert.deepStrictEqual(artifact.counts, {
+    elements: 3,
+    attributes: 2,
+    properties: 1,
+    stats: 2,
   });
-  const lantern = resolveGenerator(lanternRecipe, { seed: 93208, id: 'proof.item.lantern' });
-  assert.deepStrictEqual(tokenTexts(lantern), ['Ember', 'Lantern']);
-  assert.strictEqual(lantern.instance.name, 'Ember Lantern');
-  assert.strictEqual(lantern.instance.templateId, 'card.item');
+  assert.strictEqual(artifact.elements.length, 3);
+  assert.strictEqual(new Set(artifact.elements.map((entry) => entry.element)).size, 3);
+  assert.ok(artifact.elements.every((entry) => ELEMENTS.includes(entry.element)));
+  assert.ok(artifact.elements.every((entry) => Number.isFinite(entry.weight)));
+  assert.deepStrictEqual(artifact.attributes, [
+    { kind: 'Attribute', id: 'Attribute.1' },
+    { kind: 'Attribute', id: 'Attribute.2' },
+  ]);
+  assert.deepStrictEqual(artifact.properties, [
+    { kind: 'Property', id: 'Property.1' },
+  ]);
+  assert.deepStrictEqual(artifact.stats, [
+    { kind: 'Stat', id: 'Stat.1' },
+    { kind: 'Stat', id: 'Stat.2' },
+  ]);
 
-  const observatoryRecipe = genericSituationPack({
-    id: 'pack.situation',
-    origin: one('constructed'),
-    enclosure: one('partial'),
-    verticality: one('high'),
-    depth: one('shallow'),
-    decay: one('fresh'),
-    purpose: one('observe'),
-    element: one('Sky'),
-    rarity: one('T3'),
-  });
-  assert.deepStrictEqual(observatoryRecipe.fixed, {}, 'generic Pack must not contain Observatory as fixed form');
-  const observatory = resolveGenerator(observatoryRecipe, { seed: 93208, id: 'proof.situation.observatory' });
-  assert.ok(observatory.virtualNaming.tokens.some((token) => token.id === TOKENS.observatory.id), 'Virtual threshold should recognize Observatory-like topology');
-  assert.deepStrictEqual(tokenTexts(observatory), ['Gale', 'Observatory']);
-  assert.strictEqual(observatory.instance.name, 'Gale Observatory');
-  assert.strictEqual(observatory.instance.templateId, 'pack.situation');
-
-  // Named outcomes are content vocabulary, never kernel/runtime branches.
-  const kernelRuntime = `${sourceTree(path.join(__dirname, '..', 'src', 'kernel'))}\n${sourceTree(path.join(__dirname, '..', 'src', 'runtime'))}`;
-  for (const forbidden of ['Mantis', 'Lantern', 'Observatory']) {
-    assert.ok(!kernelRuntime.includes(forbidden), `${forbidden} leaked into kernel/runtime behavior`);
+  const activeModel = `${source('src', 'content', 'generative-authoring.js')}\n${source('src', 'content', 'token-packs.js')}`;
+  const forbidden = [
+    'bodyPlan', 'mobility', 'cognition', 'elevation', 'relief', 'moisture', 'age',
+    'geometry', 'material', 'rarity', 'constitution', 'durability',
+    'Card.Persona', 'card.persona', 'Card.Item', 'card.item', 'Card.Biome', 'card.biome',
+    'Dragon', 'Mantis', 'Lantern', 'Observatory',
+  ];
+  for (const term of forbidden) {
+    assert.ok(!activeModel.includes(term), `premature semantic field leaked into active minimal model: ${term}`);
   }
-
-  // Tokens are inert data. They identify vocabulary; thresholds live in Token Packs.
-  assert.strictEqual(TOKENS.mantis.kind, 'Token');
-  assert.strictEqual(TOKENS.mantis.text, 'Mantis');
-  assert.ok(!Object.values(TOKENS.mantis).some((value) => typeof value === 'function'));
 
   console.log(JSON.stringify({
     pass: true,
-    invariant: 'named outcomes are Tokens, not Cards/Packs',
-    genericGenerators: ['card.persona', 'card.item', 'pack.situation'],
-    outcomes: [dragon.instance.name, mantis.instance.name, lantern.instance.name, observatory.instance.name],
-    virtualThresholds: [dragon.virtualNaming.name, observatory.virtualNaming.name],
-    kernelRuntimeNamedOutcomeLeaks: 0,
+    invariant: 'Card.Artifact generates Artifact; Artifact.Persona is a type, not a Card',
+    universalShape: ['Elements', 'Attributes', 'Properties', 'Stats'],
+    card: CARD_ARTIFACT.id,
+    admittedKinds: Object.keys(ARTIFACT_TYPES),
+    proof: {
+      kind: artifact.kind,
+      counts: artifact.counts,
+      elements: artifact.elements,
+    },
+    prematureSemanticFields: 0,
   }, null, 2));
 }
 
