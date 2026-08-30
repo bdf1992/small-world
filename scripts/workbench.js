@@ -85,6 +85,7 @@ function createWorkbenchServer({ simulation = createSimulationSession({ seed: DE
       }
       if (url.pathname === '/classic') return serveFile(res, 'index.html', 'text/html');
       if (url.pathname === '/parity.js') return serveFile(res, 'parity.js', 'text/javascript');
+      if (url.pathname === '/inspector.js') return serveFile(res, 'inspector.js', 'text/javascript');
       if (url.pathname === '/parity.css') return serveFile(res, 'parity.css', 'text/css');
       if (url.pathname === '/app.js') return serveFile(res, 'app.js', 'text/javascript');
       if (url.pathname === '/style.css') return serveFile(res, 'style.css', 'text/css');
