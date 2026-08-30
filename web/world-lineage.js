@@ -41,7 +41,7 @@
         step.accepts ? `accepts=${step.accepts}` : null,
         step.count !== undefined ? `count=${step.count}` : null,
       ].filter(Boolean).join(' · ');
-      return `<div class="trace-step">
+      return `<div class="trace-step" data-sw-kind="${esc(step.kind)}">
         <div><b>${esc(step.kind)}</b><span class="mono">${esc(step.id)}</span></div>
         ${detail ? `<small>${esc(detail)}</small>` : ''}
         ${next ? `<span class="trace-relation">${esc(step.relation)} ↓</span>` : ''}
@@ -50,7 +50,7 @@
   }
 
   function lifecycleRows(trace) {
-    return trace.lifecycle.map((step) => `<span class="pill"><b>${esc(step.stage)}</b>${esc(step.id)}</span>`).join('');
+    return `<div class="sw-lifecycle">${trace.lifecycle.map((step) => `<span class="pill" data-sw-stage="${esc(step.stage)}"><b>${esc(step.stage)}</b>${esc(step.id)}</span>`).join('')}</div>`;
   }
 
   function bindTraceActions(trace) {
@@ -95,7 +95,7 @@
       <div class="kv"><span>landed in</span><b>${esc(label(trace.region?.id))} / ${esc(trace.situation?.label)}</b></div>
       <div class="kv"><span>source</span><div>${cardAction} ${packAction} <button type="button" data-open-resolution>Resolution graph</button></div></div>
       <section class="trace-section"><p class="eyebrow">Backward custody</p><div class="trace-path">${relationRows(trace)}</div></section>
-      <section class="trace-section"><p class="eyebrow">Lifecycle</p><div>${lifecycleRows(trace)}</div></section>
+      <section class="trace-section"><p class="eyebrow">Lifecycle</p>${lifecycleRows(trace)}</section>
       <section class="trace-section"><p class="eyebrow">Requirement</p><div class="mono">${esc(JSON.stringify(trace.pack?.requirement ?? null, null, 2))}</div></section>`;
     bindTraceActions(trace);
   }
@@ -121,7 +121,8 @@
           const member = world.objects[child.key];
           const button = document.createElement('button');
           button.type = 'button';
-          button.className = 'lineage-member';
+          button.className = 'lineage-member sw-object-link';
+          button.dataset.swKind = member?.kind ?? 'Artifact';
           button.dataset.worldLineage = child.key;
           button.innerHTML = `<span>${esc(child.role ?? 'member')}</span><b>${esc(member?.label ?? child.label)}</b><small>${esc(member?.facts?.templateId ?? member?.grammar ?? '')}</small>`;
           button.addEventListener('click', () => inspectLanding(child.key));
