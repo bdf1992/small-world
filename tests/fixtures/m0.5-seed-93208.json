@@ -1,0 +1,40 @@
+{
+  "pass": true,
+  "invariants": {
+    "fieldCount": true,
+    "edgeOpposition": true,
+    "separateGraphs": true,
+    "allResolved": true,
+    "digest": "de96ca6e6487eba6"
+  },
+  "dayFW": {
+    "r": 4,
+    "base": -1,
+    "modulation": 0.6040202025355335,
+    "weight": -0.6040202025355335
+  },
+  "nightFW": {
+    "r": 4,
+    "base": -1,
+    "modulation": 1.3959797974644665,
+    "weight": -1.3959797974644665
+  },
+  "dayPlusOne": {
+    "r": 1,
+    "base": 0.75,
+    "modulation": 1.0820101012677668,
+    "weight": 0.811507575950825
+  },
+  "nightPlusOne": {
+    "r": 7,
+    "base": 0.6,
+    "modulation": 0.9179898987322332,
+    "weight": 0.55079393923934
+  },
+  "tick": 20,
+  "entityCount": 23,
+  "biomeCount": 72,
+  "pressure": 99.875404339825,
+  "transferEvents": 205,
+  "previewCount": 6
+}
