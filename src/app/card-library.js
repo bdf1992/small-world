@@ -173,7 +173,7 @@ function realizeCard(template, virtual, seed) {
   ]));
   const properties = { ...template.fixed };
   const attributes = {};
-  let rarity = settled.rarity ?? null;
+  const rarity = settled.rarity ?? null;
 
   for (const [field, value] of Object.entries(settled)) {
     if (field === 'rarity') continue;
@@ -229,5 +229,7 @@ module.exports = {
   cardDraftFromTemplate,
   validateCardDraft,
   buildCardTemplate,
+  virtualizeCard,
+  realizeCard,
   resolveCardDraft,
 };

@@ -31,7 +31,7 @@ async function main() {
     assert.match(html, /Authoring & Resolution/);
     assert.match(html, /Reset draft/);
     assert.match(html, /Card library/);
-    assert.match(html, /Pack/);
+    assert.match(html, /Pack circuit/);
     assert.match(html, /Resolution/);
 
     const jsResponse = await fetch(`${base}/authoring.js`);
@@ -44,10 +44,11 @@ async function main() {
     const initialResult = await json(`${base}/api/authoring?seed=93208`);
     assert.strictEqual(initialResult.response.status, 200);
     const projection = initialResult.value;
-    assert.strictEqual(projection.projectionVersion, 3);
+    assert.strictEqual(projection.projectionVersion, 4);
     assert.strictEqual(projection.seed, 93208);
     assert.strictEqual(projection.revision, 0);
     assert.strictEqual(projection.editor.selectedCardId, 'persona.dragon');
+    assert.strictEqual(projection.editor.pack.slots.guardian.requirement.accepts, 'Artifact/Persona');
     assert.strictEqual(projection.views.card.root, 'persona.dragon');
     assert.strictEqual(projection.views.pack.root, 'pack.spire');
     assert.strictEqual(projection.views.graph.type, 'Scenario');
@@ -109,7 +110,4 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main().catch((error) => { console.error(error); process.exitCode = 1; });
