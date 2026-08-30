@@ -88,6 +88,50 @@ function applyAuthoringAction(session, url) {
   const action = url.pathname.slice('/api/authoring/'.length);
   if (!action || action === 'snapshot') return session.snapshot();
   if (action === 'reset') return session.reset(integerParam(url.searchParams, 'seed', session.seed));
+  if (action === 'select-card') return session.selectCard({ cardId: textParam(url.searchParams, 'card') });
+  if (action === 'create-card') {
+    return session.createCard({
+      grammar: url.searchParams.get('grammar') ?? 'Artifact/Persona',
+      id: textParam(url.searchParams, 'id'),
+    });
+  }
+  if (action === 'clone-card') {
+    return session.cloneCard({
+      cardId: url.searchParams.get('card') ?? session.selectedCardId,
+      newId: textParam(url.searchParams, 'id'),
+    });
+  }
+  if (action === 'rename-card') {
+    return session.renameCard({
+      cardId: url.searchParams.get('card') ?? session.selectedCardId,
+      newId: textParam(url.searchParams, 'id'),
+    });
+  }
+  if (action === 'delete-card') {
+    return session.deleteCard({ cardId: url.searchParams.get('card') ?? session.selectedCardId });
+  }
+  if (action === 'set-card-fixed') {
+    return session.setCardFixed({
+      cardId: url.searchParams.get('card') ?? session.selectedCardId,
+      field: textParam(url.searchParams, 'field'),
+      value: textParam(url.searchParams, 'value'),
+    });
+  }
+  if (action === 'set-card-weight') {
+    return session.setCardWeight({
+      cardId: url.searchParams.get('card') ?? session.selectedCardId,
+      field: textParam(url.searchParams, 'field'),
+      candidate: textParam(url.searchParams, 'candidate'),
+      weight: numberParam(url.searchParams, 'weight'),
+    });
+  }
+  if (action === 'set-card-affinity') {
+    return session.setCardAffinity({
+      cardId: url.searchParams.get('card') ?? session.selectedCardId,
+      field: url.searchParams.get('field') ?? 'element',
+      affinity: textParam(url.searchParams, 'affinity'),
+    });
+  }
   if (action === 'set-weight') {
     return session.setWeight({
       target: textParam(url.searchParams, 'target'),
@@ -127,15 +171,14 @@ function createWorkbenchServer({
       if (url.pathname.startsWith('/api/simulation/')) {
         return sendJson(res, 200, applySimulationAction(simulation, url));
       }
-      if (url.pathname === '/' || url.pathname === '/index.html') {
-        return serveFile(res, 'parity.html', 'text/html');
-      }
+      if (url.pathname === '/' || url.pathname === '/index.html') return serveFile(res, 'parity.html', 'text/html');
       if (url.pathname === '/authoring') return serveFile(res, 'authoring.html', 'text/html');
       if (url.pathname === '/classic') return serveFile(res, 'index.html', 'text/html');
       if (url.pathname === '/parity.js') return serveFile(res, 'parity.js', 'text/javascript');
       if (url.pathname === '/inspector.js') return serveFile(res, 'inspector.js', 'text/javascript');
       if (url.pathname === '/parity.css') return serveFile(res, 'parity.css', 'text/css');
       if (url.pathname === '/authoring.js') return serveFile(res, 'authoring.js', 'text/javascript');
+      if (url.pathname === '/card-editor.js') return serveFile(res, 'card-editor.js', 'text/javascript');
       if (url.pathname === '/authoring.css') return serveFile(res, 'authoring.css', 'text/css');
       if (url.pathname === '/app.js') return serveFile(res, 'app.js', 'text/javascript');
       if (url.pathname === '/style.css') return serveFile(res, 'style.css', 'text/css');
@@ -154,7 +197,7 @@ function main() {
     const address = server.address();
     console.log(`Small World workbench: http://127.0.0.1:${address.port}`);
     console.log(`Authoring & Resolution: http://127.0.0.1:${address.port}/authoring`);
-    console.log('Card/Pack draft edits recompile through the same bounded world resolver.');
+    console.log('Card/Pack draft edits recompile through application authoring ports.');
     console.log('Press Ctrl+C to stop.');
   });
 }
