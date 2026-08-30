@@ -6,6 +6,7 @@
   <title>Small World — Authoring & Resolution</title>
   <link rel="stylesheet" href="/authoring.css">
   <link rel="stylesheet" href="/card-editor.css">
+  <link rel="stylesheet" href="/pack-editor.css">
 </head>
 <body>
   <main class="shell">
@@ -69,6 +70,15 @@
           <p id="cardStatus" class="muted card-status">Card edits compile through the application authoring port.</p>
         </section>
 
+        <section id="packWorkshop" class="pack-workshop" aria-label="Pack circuit" hidden>
+          <div class="pack-head">
+            <div><p class="eyebrow">Situation Pack</p><h3>Spire</h3></div>
+            <div id="packResult" class="pack-result"></div>
+          </div>
+          <div id="packSlots" class="pack-slots"></div>
+          <p id="packStatus" class="muted pack-status">Connections are admitted only when a Card satisfies the slot Requirement.</p>
+        </section>
+
         <div id="semantic" class="semantic"></div>
         <div id="graphWrap" class="graph-wrap" hidden>
           <div class="graph-toolbar">
@@ -102,5 +112,6 @@
   </main>
   <script src="/authoring.js" defer></script>
   <script src="/card-editor.js" defer></script>
+  <script src="/pack-editor.js" defer></script>
 </body>
 </html>
