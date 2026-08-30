@@ -240,9 +240,9 @@ function projectWorld({ compiled, solve }) {
   });
 }
 
-function resolveWorld(request = {}) {
+function resolveWorld(request = {}, options = {}) {
   const { seed, budget } = normalizeRequest(request);
-  const compiled = createHorizontalWorld(seed);
+  const compiled = createHorizontalWorld(seed, options.horizontalWorld ?? {});
   const solve = solveGraph({
     graph: compiled.graph,
     target: compiled.target,
@@ -259,6 +259,7 @@ function resolveWorld(request = {}) {
 module.exports = {
   DEFAULTS,
   normalizeRequest,
+  projectWorld,
   resolveWorld,
   objectKey,
 };
