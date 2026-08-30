@@ -30,7 +30,7 @@ async function main() {
     const html = await htmlResponse.text();
     assert.match(html, /Authoring & Resolution/);
     assert.match(html, /Reset draft/);
-    assert.match(html, /Card/);
+    assert.match(html, /Card library/);
     assert.match(html, /Pack/);
     assert.match(html, /Resolution/);
 
@@ -44,9 +44,10 @@ async function main() {
     const initialResult = await json(`${base}/api/authoring?seed=93208`);
     assert.strictEqual(initialResult.response.status, 200);
     const projection = initialResult.value;
-    assert.strictEqual(projection.projectionVersion, 2);
+    assert.strictEqual(projection.projectionVersion, 3);
     assert.strictEqual(projection.seed, 93208);
     assert.strictEqual(projection.revision, 0);
+    assert.strictEqual(projection.editor.selectedCardId, 'persona.dragon');
     assert.strictEqual(projection.views.card.root, 'persona.dragon');
     assert.strictEqual(projection.views.pack.root, 'pack.spire');
     assert.strictEqual(projection.views.graph.type, 'Scenario');
@@ -96,6 +97,7 @@ async function main() {
     console.log(JSON.stringify({
       pass: true,
       httpAuthoring: true,
+      projectionVersion: projection.projectionVersion,
       initialGuardian: guardianLabel(projection),
       editedGuardian: guardianLabel(edit.value),
       graphTuples: graph.tuples.length,
