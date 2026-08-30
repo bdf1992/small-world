@@ -20,9 +20,10 @@ function guardian(snapshot) {
 function main() {
   const session = createAuthoringSession({ seed: 93208 });
   const initial = session.snapshot();
-  assert.strictEqual(initial.projectionVersion, 3);
+  assert.strictEqual(initial.projectionVersion, 4);
   assert.strictEqual(initial.revision, 0);
   assert.strictEqual(initial.editor.selectedCardId, 'persona.dragon');
+  assert.strictEqual(initial.editor.pack.slots.guardian.requirement.accepts, 'Artifact/Persona');
   assert.strictEqual(guardian(initial).label, 'Dragon');
 
   const banditOnly1 = session.setWeight({ target: 'spire', field: 'guardian', candidate: 'persona.dragon', weight: 0 });
@@ -52,22 +53,13 @@ function main() {
   assert.ok(strongGround > weakGround, 'strong contextual affinity should weight Mountains Ground more than weak affinity');
   assert.strictEqual(weak.draft.dragon.priors.element.affinity, 'weak');
 
-  assert.throws(
-    () => session.setWeight({ target: 'dragon', field: 'element', candidate: 'Ground', weight: 1 }),
-    /not directly weighted/,
-  );
-  assert.throws(
-    () => session.setAffinity({ affinity: 'extreme' }),
-    /weak, medium, or strong/,
-  );
+  assert.throws(() => session.setWeight({ target: 'dragon', field: 'element', candidate: 'Ground', weight: 1 }), /not directly weighted/);
+  assert.throws(() => session.setAffinity({ affinity: 'extreme' }), /weak, medium, or strong/);
 
   const support = createAuthoringSession({ seed: 93208 });
   support.setWeight({ target: 'spire', field: 'guardian', candidate: 'persona.dragon', weight: 0 });
   support.setWeight({ target: 'spire', field: 'guardian', candidate: 'persona.bandit', weight: 0 });
-  assert.throws(
-    () => support.setWeight({ target: 'spire', field: 'guardian', candidate: 'persona.bear', weight: 0 }),
-    /retain at least one supported candidate/,
-  );
+  assert.throws(() => support.setWeight({ target: 'spire', field: 'guardian', candidate: 'persona.bear', weight: 0 }), /retain at least one supported candidate/);
 
   console.log(JSON.stringify({
     pass: true,
