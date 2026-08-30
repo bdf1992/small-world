@@ -107,9 +107,7 @@ function applyAuthoringAction(session, url) {
       newId: textParam(url.searchParams, 'id'),
     });
   }
-  if (action === 'delete-card') {
-    return session.deleteCard({ cardId: url.searchParams.get('card') ?? session.selectedCardId });
-  }
+  if (action === 'delete-card') return session.deleteCard({ cardId: url.searchParams.get('card') ?? session.selectedCardId });
   if (action === 'set-card-fixed') {
     return session.setCardFixed({
       cardId: url.searchParams.get('card') ?? session.selectedCardId,
@@ -156,21 +154,15 @@ function createWorkbenchServer({
   return http.createServer((req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost');
-      if (url.pathname === '/api/world') {
-        return sendJson(res, 200, resolveWorld(parseWorldRequest(url)));
-      }
+      if (url.pathname === '/api/world') return sendJson(res, 200, resolveWorld(parseWorldRequest(url)));
       if (url.pathname === '/api/authoring') {
         const requestedSeed = integerParam(url.searchParams, 'seed', authoring.seed);
         if (requestedSeed !== authoring.seed) return sendJson(res, 200, authoring.reset(requestedSeed));
         return sendJson(res, 200, authoring.snapshot());
       }
-      if (url.pathname.startsWith('/api/authoring/')) {
-        return sendJson(res, 200, applyAuthoringAction(authoring, url));
-      }
+      if (url.pathname.startsWith('/api/authoring/')) return sendJson(res, 200, applyAuthoringAction(authoring, url));
       if (url.pathname === '/api/simulation') return sendJson(res, 200, simulation.snapshot());
-      if (url.pathname.startsWith('/api/simulation/')) {
-        return sendJson(res, 200, applySimulationAction(simulation, url));
-      }
+      if (url.pathname.startsWith('/api/simulation/')) return sendJson(res, 200, applySimulationAction(simulation, url));
       if (url.pathname === '/' || url.pathname === '/index.html') return serveFile(res, 'parity.html', 'text/html');
       if (url.pathname === '/authoring') return serveFile(res, 'authoring.html', 'text/html');
       if (url.pathname === '/classic') return serveFile(res, 'index.html', 'text/html');
@@ -180,6 +172,7 @@ function createWorkbenchServer({
       if (url.pathname === '/authoring.js') return serveFile(res, 'authoring.js', 'text/javascript');
       if (url.pathname === '/card-editor.js') return serveFile(res, 'card-editor.js', 'text/javascript');
       if (url.pathname === '/authoring.css') return serveFile(res, 'authoring.css', 'text/css');
+      if (url.pathname === '/card-editor.css') return serveFile(res, 'card-editor.css', 'text/css');
       if (url.pathname === '/app.js') return serveFile(res, 'app.js', 'text/javascript');
       if (url.pathname === '/style.css') return serveFile(res, 'style.css', 'text/css');
       return send(res, 404, 'not found', 'text/plain');
