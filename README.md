@@ -4,7 +4,47 @@ A bounded generative-world architecture lab for Catalyst Core.
 
 This repository exists to prove that simple authored content can compile into inspectable Virtual possibility spaces and deterministically realize a small world without exposing solver complexity to ordinary content authors.
 
-Initial milestone: **M0.6 — Bounded Generative World**.
+Current milestone: **M0.6 — Bounded Generative World**.
+
+## Try M0.6
+
+Node 20+ is required. The owner-facing runner intentionally has no external dependencies.
+
+```bash
+npm test
+npm run world
+```
+
+The default world run uses seed `93208` and the full M0.6 budget:
+
+```text
+maxHops      = 4
+maxSlots     = 6
+maxInstances = 9
+```
+
+Change the resolution budget directly:
+
+```bash
+npm run world -- --seed 93208 --hops 4 --slots 6 --instances 0
+npm run world -- --seed 93208 --hops 4 --slots 3 --instances 9
+npm run world -- --seed 93208 --hops 2 --slots 6 --instances 9
+```
+
+The runner prints Region topology and elemental fields, realized Situations when the solve completes, resolved Virtuals when it does not, and explicit budget/frontier stops. Reduced budgets are valid QA cases; an unresolved result is not automatically a failure.
+
+### Owner QA questions
+
+When exercising M0.6, ask:
+
+- Does the same seed and budget replay exactly?
+- Does a smaller budget leave understandable unresolved possibility rather than nonsense?
+- Can you tell what contextual field influenced a Region or Virtual?
+- Do Definition, Template, Reference, Virtual, and Instance feel like useful plain handles?
+- Can you explain why realization stopped?
+- Does changing the seed vary the world without changing the architecture contract?
+
+M0.6 is not owner-accepted merely because CI passes. The release candidate is intended to make those questions directly inspectable before landing on `main`.
 
 ## Working premise
 
@@ -60,7 +100,8 @@ src/model/    Definition/Template/Reference/Virtual/Instance model
 src/runtime/  committed world state and deterministic step/commit
 src/content/  authored cards, packs, instruments, and rules
 src/inspect/  facts, possibilities, lineage, and signal traces
-tests/        model, budget, replay, architecture, and reference checks
+tests/        model, budget, replay, architecture, reference, and owner-QA checks
+scripts/      direct owner/developer exercises over the model
 ```
 
 ## Governing rule
