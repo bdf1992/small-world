@@ -1,12 +1,13 @@
 {
   "name": "small-world",
-  "version": "0.6.0-alpha.2",
+  "version": "0.6.0-alpha.3",
   "private": true,
   "description": "Bounded generative-world architecture lab for Catalyst Core",
   "scripts": {
-    "test": "node tests/m0.5-baseline.test.js && node tests/dragon-lifecycle.test.js",
+    "test": "node tests/m0.5-baseline.test.js && node tests/dragon-lifecycle.test.js && node tests/dag-solver.test.js",
     "verify:m0.5": "node tests/m0.5-baseline.test.js",
-    "verify:dragon": "node tests/dragon-lifecycle.test.js"
+    "verify:dragon": "node tests/dragon-lifecycle.test.js",
+    "verify:dag": "node tests/dag-solver.test.js"
   },
   "engines": {
     "node": ">=20"
