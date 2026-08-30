@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/authoring.css">
   <link rel="stylesheet" href="/card-editor.css">
   <link rel="stylesheet" href="/pack-editor.css">
+  <link rel="stylesheet" href="/resolution-editor.css">
 </head>
 <body>
   <main class="shell">
@@ -79,6 +80,44 @@
           <p id="packStatus" class="muted pack-status">Connections are admitted only when a Card satisfies the slot Requirement.</p>
         </section>
 
+        <section id="resolutionWorkshop" class="resolution-workshop" aria-label="Resolution frontier" hidden>
+          <div class="resolution-head">
+            <div>
+              <p class="eyebrow">Bounded solve</p>
+              <h3>Resolution Frontier</h3>
+              <p class="muted">Authored truth stays fixed. Budget changes only how far this run may settle.</p>
+            </div>
+            <div id="resolutionState" class="resolution-state"></div>
+          </div>
+          <div class="resolution-controls">
+            <label>Hops <input id="resolutionHops" type="number" min="0" step="1"></label>
+            <label>Slots <input id="resolutionSlots" type="number" min="0" step="1"></label>
+            <label>Instances <input id="resolutionInstances" type="number" min="0" step="1"></label>
+            <button id="applyResolutionBudget" type="button">Resolve to budget</button>
+            <button id="resetResolutionBudget" type="button">Full budget</button>
+          </div>
+          <div class="resolution-presets" aria-label="Resolution presets">
+            <button type="button" data-resolution-preset="virtual">Virtual only</button>
+            <button type="button" data-resolution-preset="slot">3 slots</button>
+            <button type="button" data-resolution-preset="shallow">1 hop</button>
+          </div>
+          <div class="resolution-grid">
+            <div>
+              <p class="eyebrow">Usage</p>
+              <div id="resolutionUsage" class="resolution-usage"></div>
+            </div>
+            <div>
+              <p class="eyebrow">Stops</p>
+              <div id="resolutionStops" class="resolution-stops"></div>
+            </div>
+            <div>
+              <p class="eyebrow">Unresolved virtuals</p>
+              <div id="resolutionVirtuals" class="resolution-virtuals"></div>
+            </div>
+          </div>
+          <p id="resolutionStatus" class="muted resolution-status">A bounded stop is evidence, not invalid world state.</p>
+        </section>
+
         <div id="semantic" class="semantic"></div>
         <div id="graphWrap" class="graph-wrap" hidden>
           <div class="graph-toolbar">
@@ -113,5 +152,6 @@
   <script src="/authoring.js" defer></script>
   <script src="/card-editor.js" defer></script>
   <script src="/pack-editor.js" defer></script>
+  <script src="/resolution-editor.js" defer></script>
 </body>
 </html>

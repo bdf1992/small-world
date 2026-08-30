@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { resolveWorld, DEFAULTS } = require('../src/app/world');
 const { createSimulationSession } = require('../src/app/simulation');
-const { createAuthoringSession } = require('../src/app/authoring-session');
+const { createResolutionAuthoringSession } = require('../src/app/resolution-session');
 
 const WEB_ROOT = path.join(__dirname, '..', 'web');
 
@@ -71,6 +71,14 @@ function applyAuthoringAction(session, url) {
   const action = url.pathname.slice('/api/authoring/'.length);
   if (!action || action === 'snapshot') return session.snapshot();
   if (action === 'reset') return session.reset(integerParam(url.searchParams, 'seed', session.seed));
+  if (action === 'set-budget') {
+    return session.setBudget({
+      maxHops: integerParam(url.searchParams, 'hops', session.budget.maxHops),
+      maxSlots: integerParam(url.searchParams, 'slots', session.budget.maxSlots),
+      maxInstances: integerParam(url.searchParams, 'instances', session.budget.maxInstances),
+    });
+  }
+  if (action === 'reset-budget') return session.resetBudget();
   if (action === 'select-card') return session.selectCard({ cardId: textParam(url.searchParams, 'card') });
   if (action === 'create-card') return session.createCard({ grammar: url.searchParams.get('grammar') ?? 'Artifact/Persona', id: textParam(url.searchParams, 'id') });
   if (action === 'clone-card') return session.cloneCard({ cardId: url.searchParams.get('card') ?? session.selectedCardId, newId: textParam(url.searchParams, 'id') });
@@ -88,7 +96,10 @@ function applyAuthoringAction(session, url) {
   throw new Error(`unknown authoring action: ${action}`);
 }
 
-function createWorkbenchServer({ simulation = createSimulationSession({ seed: DEFAULTS.seed }), authoring = createAuthoringSession({ seed: DEFAULTS.seed }) } = {}) {
+function createWorkbenchServer({
+  simulation = createSimulationSession({ seed: DEFAULTS.seed }),
+  authoring = createResolutionAuthoringSession({ seed: DEFAULTS.seed }),
+} = {}) {
   return http.createServer((req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost');
@@ -110,9 +121,11 @@ function createWorkbenchServer({ simulation = createSimulationSession({ seed: DE
       if (url.pathname === '/authoring.js') return serveFile(res, 'authoring.js', 'text/javascript');
       if (url.pathname === '/card-editor.js') return serveFile(res, 'card-editor.js', 'text/javascript');
       if (url.pathname === '/pack-editor.js') return serveFile(res, 'pack-editor.js', 'text/javascript');
+      if (url.pathname === '/resolution-editor.js') return serveFile(res, 'resolution-editor.js', 'text/javascript');
       if (url.pathname === '/authoring.css') return serveFile(res, 'authoring.css', 'text/css');
       if (url.pathname === '/card-editor.css') return serveFile(res, 'card-editor.css', 'text/css');
       if (url.pathname === '/pack-editor.css') return serveFile(res, 'pack-editor.css', 'text/css');
+      if (url.pathname === '/resolution-editor.css') return serveFile(res, 'resolution-editor.css', 'text/css');
       if (url.pathname === '/app.js') return serveFile(res, 'app.js', 'text/javascript');
       if (url.pathname === '/style.css') return serveFile(res, 'style.css', 'text/css');
       return send(res, 404, 'not found', 'text/plain');
@@ -130,7 +143,7 @@ function main() {
     const address = server.address();
     console.log(`Small World workbench: http://127.0.0.1:${address.port}`);
     console.log(`Authoring & Resolution: http://127.0.0.1:${address.port}/authoring`);
-    console.log('Card and Pack edits recompile through application authoring ports.');
+    console.log('Card and Pack edits change authored revision; Hops / Slots / Instances change only resolution revision.');
     console.log('Press Ctrl+C to stop.');
   });
 }

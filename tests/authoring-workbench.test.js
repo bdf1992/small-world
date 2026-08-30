@@ -32,7 +32,7 @@ async function main() {
     assert.match(html, /Reset draft/);
     assert.match(html, /Card library/);
     assert.match(html, /Pack circuit/);
-    assert.match(html, /Resolution/);
+    assert.match(html, /Resolution Frontier/);
 
     const jsResponse = await fetch(`${base}/authoring.js`);
     assert.strictEqual(jsResponse.status, 200);
@@ -44,9 +44,11 @@ async function main() {
     const initialResult = await json(`${base}/api/authoring?seed=93208`);
     assert.strictEqual(initialResult.response.status, 200);
     const projection = initialResult.value;
-    assert.strictEqual(projection.projectionVersion, 4);
+    assert.strictEqual(projection.projectionVersion, 5);
     assert.strictEqual(projection.seed, 93208);
     assert.strictEqual(projection.revision, 0);
+    assert.strictEqual(projection.resolutionRevision, 0);
+    assert.strictEqual(projection.resolution.complete, true);
     assert.strictEqual(projection.editor.selectedCardId, 'persona.dragon');
     assert.strictEqual(projection.editor.pack.slots.guardian.requirement.accepts, 'Artifact/Persona');
     assert.strictEqual(projection.views.card.root, 'persona.dragon');
@@ -68,6 +70,7 @@ async function main() {
     edit = await json(`${base}/api/authoring/set-weight?target=spire&field=guardian&candidate=persona.bandit&weight=1`);
     assert.strictEqual(edit.response.status, 200);
     assert.strictEqual(edit.value.revision, 3);
+    assert.strictEqual(edit.value.resolutionRevision, 0);
     assert.strictEqual(guardianLabel(edit.value), 'Bandit');
     assert.strictEqual(edit.value.draft.spire.slots.guardian.candidates['persona.dragon'], 0);
 
@@ -83,6 +86,7 @@ async function main() {
     const reset = await json(`${base}/api/authoring/reset?seed=93208`);
     assert.strictEqual(reset.response.status, 200);
     assert.strictEqual(reset.value.revision, 0);
+    assert.strictEqual(reset.value.resolutionRevision, 0);
     assert.strictEqual(guardianLabel(reset.value), 'Dragon');
     assert.strictEqual(reset.value.draft.dragon.priors.element.affinity, 'strong');
 
