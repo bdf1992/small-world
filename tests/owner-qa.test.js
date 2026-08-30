@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('assert');
+const path = require('path');
+const { execFileSync } = require('child_process');
 const { createSolveBudget } = require('../src/kernel/budget');
 const { createNode, createGraph, solveGraph } = require('../src/kernel/dag');
 const { createInstance } = require('../src/model/lifecycle');
@@ -80,6 +82,31 @@ assert.ok(mountains);
 assert.ok(mountains.attributes.Ground > 0);
 assert.ok(mountains.attributes.Fire > 0);
 
+// Exercise the same direct runner commands the owner will use. These are smoke
+// checks for the acceptance surface itself, not substitutes for human feedback.
+const runner = path.join(__dirname, '..', 'scripts', 'world.js');
+function runWorld(args) {
+  return execFileSync(process.execPath, [runner, ...args], { encoding: 'utf8' });
+}
+
+const fullOutput = runWorld(['--seed', '93208', '--hops', '4', '--slots', '6', '--instances', '9']);
+assert.match(fullOutput, /status=resolved/);
+assert.match(fullOutput, /mountains: Spire/);
+assert.match(fullOutput, /Ground 50\.0%/);
+
+const virtualOnlyOutput = runWorld(['--seed', '93208', '--hops', '4', '--slots', '6', '--instances', '0']);
+assert.match(virtualOnlyOutput, /status=unresolved/);
+assert.match(virtualOnlyOutput, /RESOLVED VIRTUALS/);
+assert.match(virtualOnlyOutput, /budget\.maxInstances/);
+
+const slotLimitedOutput = runWorld(['--seed', '93208', '--hops', '4', '--slots', '3', '--instances', '9']);
+assert.match(slotLimitedOutput, /status=unresolved/);
+assert.match(slotLimitedOutput, /budget\.maxSlots/);
+
+const hopLimitedOutput = runWorld(['--seed', '93208', '--hops', '2', '--slots', '6', '--instances', '9']);
+assert.match(hopLimitedOutput, /status=unresolved/);
+assert.match(hopLimitedOutput, /budget\.maxHops/);
+
 console.log(JSON.stringify({
   pass: true,
   lifecycleCustody: {
@@ -93,5 +120,11 @@ console.log(JSON.stringify({
   },
   inspection: {
     mountains: mountains.attributes,
+  },
+  ownerRunner: {
+    full: /status=resolved/.test(fullOutput),
+    virtualOnly: /budget\.maxInstances/.test(virtualOnlyOutput),
+    slotLimited: /budget\.maxSlots/.test(slotLimitedOutput),
+    hopLimited: /budget\.maxHops/.test(hopLimitedOutput),
   },
 }, null, 2));
