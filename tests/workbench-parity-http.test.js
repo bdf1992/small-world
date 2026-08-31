@@ -29,6 +29,8 @@ async function main() {
       'Flip Day/Night', 'Clock → Face', 'Hourglass → Grain / Neck',
       'Spawn proposition', 'Temporal transfer', 'Player hourglass',
       'Generative overlay', 'One object grammar',
+      'coherent noise magnitude', 'smoothed prior', 'cyclic / radial pressure',
+      'spawn influence', 'time pressure', 'effective local field',
     ]) assert.match(html, new RegExp(phrase.replace(/[+]/g, '\\+')));
     assert.ok(html.indexOf('id="tick"') > html.indexOf('id="clock"'), 'time crossing control should live with the Clock instrument');
     assert.ok(html.indexOf('id="spend"') > html.indexOf('id="hourglass"'), 'grain control should live with the Hourglass instrument');
@@ -40,6 +42,11 @@ async function main() {
     assert.strictEqual(inspectorJs.status, 200);
     const paritySource = await parityJs.text();
     assert.match(paritySource, /api\/simulation/);
+    for (const mode of ['noise', 'prior', 'pressure', 'spawn', 'time', 'field']) {
+      assert.match(paritySource, new RegExp(`mode === '${mode}'`), `${mode} must remain a spatial map evidence view`);
+    }
+    assert.match(paritySource, /if\(mode==='element'\)/, 'recursive child preview must stay scoped to the element view instead of contaminating evidence heatmaps');
+    assert.match(paritySource, /POI:'⌂'/, 'realized placement markers must remain typed on the map');
     assert.match(await inspectorJs.text(), /Surface|surface/);
 
     let snapshot = await json(`${base}/api/simulation`);
