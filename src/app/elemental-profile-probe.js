@@ -6,6 +6,10 @@ const {
   RELATION_WHEEL,
   deformElementalProfile,
 } = require('../model/elemental-profile');
+const {
+  clockProjection,
+  clockProfileReading,
+} = require('./elemental-clock-context');
 
 const DEFAULT_COMPOSITION = Object.freeze({ Fire: 10, Water: 1 });
 const DEFAULT_DEFORMATION = Object.freeze({
@@ -25,19 +29,6 @@ function vectorObject(vector = []) {
   ));
 }
 
-function clockProjection(clock) {
-  return Object.freeze({
-    cycle: clock.cycle,
-    tick: clock.tick,
-    side: clock.side ? 'Night' : 'Day',
-    orientation: clock.side ? 'CCW' : 'CW',
-    position: clock.position,
-    tickInPosition: clock.tickInPosition,
-    address: clock.address(),
-    phase: clock.phase(1),
-  });
-}
-
 function hourglassProjection(hourglass) {
   return Object.freeze({
     capacity: hourglass.cap,
@@ -45,51 +36,6 @@ function hourglassProjection(hourglass) {
     upper: vectorObject(hourglass.top),
     lower: vectorObject(hourglass.bottom),
     timeless: vectorObject(hourglass.out),
-  });
-}
-
-function clockProfileReading(profile, clock) {
-  const byTarget = {};
-
-  for (const [targetIndex, target] of ELEMENT_RING.entries()) {
-    const contributions = [];
-    let score = 0;
-
-    for (const [originIndex, origin] of ELEMENT_RING.entries()) {
-      const share = Number(profile.shares[origin] ?? 0);
-      if (share <= 0) continue;
-
-      const canonical = (profile.byElement[target] ?? []).find((entry) => entry.origin === origin);
-      const dynamic = core.dynamicRelationWeight(originIndex, targetIndex, clock);
-      const contributionScore = share * dynamic.weight;
-      score += contributionScore;
-
-      contributions.push(Object.freeze({
-        origin,
-        target,
-        rawWeight: Number(profile.composition[origin] ?? 0),
-        share,
-        canonicalRole: canonical?.role ?? null,
-        contextualRole: core.R[dynamic.r],
-        modulation: dynamic.modulation,
-        signedWeight: dynamic.weight,
-        contributionScore,
-      }));
-    }
-
-    byTarget[target] = Object.freeze({
-      target,
-      score,
-      contributions: Object.freeze(contributions),
-    });
-  }
-
-  return Object.freeze({
-    at: clock.address(),
-    side: clock.side ? 'Night' : 'Day',
-    orientation: clock.side ? 'CCW' : 'CW',
-    phase: clock.phase(1),
-    byTarget: Object.freeze(byTarget),
   });
 }
 
@@ -274,9 +220,7 @@ function createElementalProfileProbe() {
 module.exports = {
   DEFAULT_COMPOSITION,
   DEFAULT_DEFORMATION,
-  clockProjection,
   hourglassProjection,
-  clockProfileReading,
   ElementalProfileProbe,
   createElementalProfileProbe,
 };
