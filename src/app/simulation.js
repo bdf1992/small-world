@@ -7,6 +7,7 @@ const { resolveWorld } = require('./world');
 
 const ELEMENTS = Object.freeze([...core.E]);
 const ZONES = Object.freeze([...core.Z]);
+const PLACEMENT_TYPES = Object.freeze(['POI', 'Artifact', 'Persona', 'Event']);
 
 function vectorObject(vector = []) {
   return Object.freeze(Object.fromEntries(ELEMENTS.map((name, index) => [name, Number(vector[index] ?? 0)])));
@@ -32,6 +33,31 @@ function compactEvent(event) {
     cycleSeat: Number.isFinite(event.cycleSeat) ? event.cycleSeat : event.cycle?.zoneSeat ?? null,
     entity: event.entity ? Object.freeze({ kind: event.entity.kind, id: event.entity.id }) : null,
   });
+}
+
+function placementReceipts(session) {
+  return Object.freeze(session.ledger
+    .filter((event) => PLACEMENT_TYPES.includes(event.type) && Number.isInteger(event.zone) && Number.isInteger(event.cellId) && event.score != null)
+    .map((event) => Object.freeze({
+      id: `Placement.${event.at}.${event.zone}.${event.cellId}.${event.type}`,
+      source: 'm0.5.spawnTick',
+      address: `${session.rootWorld.path}/zone:${event.zone}/cell:${event.cellId}`,
+      type: event.type,
+      at: event.at,
+      zone: event.zone,
+      zoneName: event.zoneName,
+      cellId: event.cellId,
+      score: event.score,
+      fieldFit: event.fieldFit,
+      relationFit: event.relationFit,
+      cycleFit: event.cycleFit,
+      phaseFit: event.phaseFit,
+      zoneBase: event.zoneBase,
+      side: event.side,
+      random: event.random,
+      cycleSeat: event.cycleSeat,
+      entity: event.entity,
+    }))));
 }
 
 function temporalSubject(subject) {
@@ -177,6 +203,9 @@ function selectedProjection(session) {
   const fieldRelationProfile = overlayElementalProfile(effectiveField);
   const supply = cell.resolved ? core.temporalSupply(session.activeWorld, session.clock, cell) : null;
   const placementCandidates = spawnProjection(session.activeWorld, session.clock, cell);
+  const receipts = session.activeWorld === session.rootWorld
+    ? placementReceipts(session).filter((receipt) => receipt.zone === cell.zone && receipt.cellId === cell.id)
+    : Object.freeze([]);
 
   return Object.freeze({
     cell: projectedCell,
@@ -211,7 +240,8 @@ function selectedProjection(session) {
       clockReading: clockProfileReading(fieldRelationProfile, session.clock),
       placement: Object.freeze({
         candidates: placementCandidates,
-        history: projectedCell.spawns,
+        markers: projectedCell.spawns,
+        history: receipts,
         selectionRule: 'highest candidate score across resolved cells in each field per tick',
       }),
     }),
@@ -397,6 +427,11 @@ class SimulationSession {
         selected: Object.freeze({ ...entry.selected }),
       }))),
       selected: selectedProjection(this),
+      placements: Object.freeze({
+        source: 'm0.5.spawnTick',
+        selectionRule: 'highest candidate score across resolved cells in each field per tick',
+        receipts: placementReceipts(this),
+      }),
       clock: clockProjection(this.clock, this.rootWorld.rotation),
       relationField: relationProjection(this.clock),
       hourglass: playerHourglass(this.hourglass),
