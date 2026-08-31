@@ -30,6 +30,8 @@ function elementalContextRelation({
   mapField,
   clock,
   artifactRef = 'Virtual<Artifact>',
+  artifactSource = 'Artifact.elemental-composition',
+  artifactStage = null,
   mapAddress = null,
 } = {}) {
   if (!clock || typeof clock.address !== 'function') {
@@ -105,7 +107,8 @@ function elementalContextRelation({
     orientation: clock.side ? 'CCW' : 'CW',
     artifact: Object.freeze({
       ref: String(artifactRef),
-      source: 'Artifact.elemental-composition',
+      source: String(artifactSource),
+      stage: artifactStage == null ? null : String(artifactStage),
       composition: artifact.composition,
       shares: vectorObject(artifact.shares),
       totalWeight: artifact.totalWeight,
