@@ -65,6 +65,26 @@ function entropy(values) {
   return total;
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function rotate(vector, offset) {
+  return vector.map((_, index) => vector[((index - offset) % 8 + 8) % 8]);
+}
+
+function rotateFrac(vector, offset) {
+  const floor = Math.floor(offset);
+  const t = offset - floor;
+  const a = rotate(vector, floor);
+  const b = rotate(vector, floor + 1);
+  return core.norm(a.map((value, index) => value * (1 - t) + b[index] * t));
+}
+
+function mixVec(a, b, t) {
+  return core.norm(a.map((value, index) => value * (1 - t) + b[index] * t));
+}
+
 function coherentNoise(seed, zone, point, element, depth) {
   let value = 0;
   let weight = 0;
@@ -106,6 +126,73 @@ function fieldPriorContract(field) {
   });
 }
 
+function cellPressureProvenance(world, field, cell) {
+  const radius = clamp(Math.hypot(cell.point.x, cell.point.y), 0, 1);
+  const stored = cell.external.slice();
+
+  if (field.local) {
+    const normalizedRadius = clamp(Math.hypot(cell.point.x, cell.point.y) / Math.max(1e-9, field.outerR), 0, 1);
+    const seat = field.rotation * PRIOR_CONTRACT.pressure.local.seatScale * normalizedRadius;
+    const baseProfile = field.baseProfile.slice();
+    const rotatedProfile = rotateFrac(baseProfile, seat);
+    const result = mixVec(baseProfile, rotatedProfile, PRIOR_CONTRACT.pressure.local.baseToRotatedMix);
+    return Object.freeze({
+      source: PRIOR_CONTRACT.pressure.source,
+      mode: 'local',
+      radius,
+      normalizedRadius,
+      seat,
+      seatScale: PRIOR_CONTRACT.pressure.local.seatScale,
+      baseToRotatedMix: PRIOR_CONTRACT.pressure.local.baseToRotatedMix,
+      baseProfile: vectorObject(baseProfile),
+      rotatedProfile: vectorObject(rotatedProfile),
+      result: vectorObject(result),
+      storedExternalPressure: vectorObject(stored),
+    });
+  }
+
+  const radialSeat = field.rotation * PRIOR_CONTRACT.pressure.root.radialSeatScale * radius;
+  const centerProfile = field.context.centerProfile.slice();
+  const cyclicProfile = rotateFrac(centerProfile, radialSeat);
+  const zoneAnchor = field.baseProfile.slice();
+  const baseMixedPressure = mixVec(
+    cyclicProfile,
+    zoneAnchor,
+    PRIOR_CONTRACT.pressure.root.cyclicToZoneAnchorMix,
+  );
+
+  let result = baseMixedPressure;
+  let barrier = null;
+  if (field.zone === 1) {
+    const radialProgress = clamp((radius - field.innerR) / (field.outerR - field.innerR), 0, 1);
+    const towardEdgeSeat = field.rotation * PRIOR_CONTRACT.pressure.root.radialSeatScale * radialProgress;
+    const towardEdgeProfile = rotateFrac(centerProfile, towardEdgeSeat);
+    result = mixVec(baseMixedPressure, towardEdgeProfile, PRIOR_CONTRACT.pressure.root.barrierTowardEdgeMix);
+    barrier = Object.freeze({
+      radialProgress,
+      towardEdgeSeat,
+      towardEdgeProfile: vectorObject(towardEdgeProfile),
+      mix: PRIOR_CONTRACT.pressure.root.barrierTowardEdgeMix,
+    });
+  }
+
+  return Object.freeze({
+    source: PRIOR_CONTRACT.pressure.source,
+    mode: 'root',
+    radius,
+    radialSeat,
+    radialSeatScale: PRIOR_CONTRACT.pressure.root.radialSeatScale,
+    cyclicToZoneAnchorMix: PRIOR_CONTRACT.pressure.root.cyclicToZoneAnchorMix,
+    centerProfile: vectorObject(centerProfile),
+    cyclicProfile: vectorObject(cyclicProfile),
+    zoneAnchor: vectorObject(zoneAnchor),
+    baseMixedPressure: vectorObject(baseMixedPressure),
+    barrier,
+    result: vectorObject(result),
+    storedExternalPressure: vectorObject(stored),
+  });
+}
+
 function cellPriorProvenance(world, field, cell) {
   const zonePrior = ZONE_PRIORS[field.zone];
   if (!zonePrior) throw new Error(`unsupported M0.5 zone for prior evidence: ${field.zone}`);
@@ -131,6 +218,7 @@ function cellPriorProvenance(world, field, cell) {
     zone: field.zone,
     zonePrior: vectorObject(zonePrior),
     externalPressure: vectorObject(pressure),
+    pressureProvenance: cellPressureProvenance(world, field, cell),
     coherentNoiseRaw: vectorObject(rawNoise),
     coherentNoiseSmoothed: vectorObject(smoothedNoise),
     preSmoothingLogits: vectorObject(rawLogits),
@@ -150,5 +238,6 @@ module.exports = {
   PRIOR_CONTRACT,
   ZONE_PRIORS,
   fieldPriorContract,
+  cellPressureProvenance,
   cellPriorProvenance,
 };
