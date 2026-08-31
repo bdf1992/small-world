@@ -4,6 +4,7 @@ const core = require('../kernel/m0.5');
 const { overlayElementalProfile } = require('../model/elemental-profile');
 const { clockProjection, clockProfileReading } = require('./elemental-clock-context');
 const { fieldPriorContract, cellPriorProvenance } = require('./m0.5-map-provenance');
+const { nextWaveEvidence } = require('./m0.5-wave-provenance');
 const { resolveWorld } = require('./world');
 
 const ELEMENTS = Object.freeze([...core.E]);
@@ -196,7 +197,62 @@ function relationProjection(clock) {
   return Object.freeze(rows);
 }
 
-function selectedProjection(session) {
+function compactWaveProjection(evidence) {
+  return Object.freeze({
+    source: evidence.source,
+    readOnly: evidence.readOnly,
+    currentWave: evidence.currentWave,
+    predictedWave: evidence.predictedWave,
+    fields: Object.freeze(evidence.fields.map((field) => Object.freeze({
+      zone: field.zone,
+      zoneName: field.zoneName,
+      done: field.done,
+      frontier: Object.freeze(field.frontier.map((item) => Object.freeze({
+        cellId: item.cellId,
+        entropy: item.entropy,
+        rootsTouched: item.rootsTouched,
+      }))),
+      rootProposals: Object.freeze(field.rootProposals.map((item) => Object.freeze({
+        root: item.root,
+        cellId: item.cellId,
+        pickScore: item.pickScore,
+      }))),
+      selectedCollapses: Object.freeze(field.selectedCollapses.map((item) => Object.freeze({
+        cellId: item.cellId,
+        selectedByRoot: item.selectedByRoot,
+        rootsTouched: item.rootsTouched,
+        collision: item.collision,
+        predictedElement: item.predictedElement,
+        predictedElementIndex: item.predictedElementIndex,
+        predictedCollapseWave: item.predictedCollapseWave,
+      }))),
+      fallback: field.fallback ? Object.freeze({ ...field.fallback }) : null,
+    }))),
+  });
+}
+
+function selectedWaveProjection(evidence, zone, cellId) {
+  const field = evidence.fields.find((candidate) => candidate.zone === zone);
+  if (!field) return null;
+  const frontier = field.frontier.find((candidate) => candidate.cellId === cellId) ?? null;
+  const proposals = field.rootProposals.filter((candidate) => candidate.cellId === cellId);
+  const collapse = field.selectedCollapses.find((candidate) => candidate.cellId === cellId) ?? null;
+  const fallback = field.fallback?.cellId === cellId ? field.fallback : null;
+  if (!frontier && !proposals.length && !collapse && !fallback) return null;
+  return Object.freeze({
+    source: evidence.source,
+    readOnly: true,
+    currentWave: evidence.currentWave,
+    predictedWave: evidence.predictedWave,
+    contract: evidence.contract,
+    frontier,
+    proposals: Object.freeze(proposals),
+    collapse,
+    fallback,
+  });
+}
+
+function selectedProjection(session, waveEvidence = nextWaveEvidence(session.activeWorld)) {
   const located = session.locateSelected();
   if (!located) return null;
   const { field, cell } = located;
@@ -230,6 +286,7 @@ function selectedProjection(session) {
       effectiveField,
       priorContract: fieldPriorContract(field),
       priorProvenance,
+      nextWave: selectedWaveProjection(waveEvidence, cell.zone, cell.id),
       effectiveFieldComposition: Object.freeze({
         unresolved: 'probability',
         resolved: Object.freeze({
@@ -391,6 +448,7 @@ class SimulationSession {
   snapshot() {
     const active = this.activeWorld;
     const invariants = core.invariants(this.rootWorld);
+    const waveEvidence = nextWaveEvidence(active);
     return Object.freeze({
       projectionVersion: 1,
       mode: 'parity-restoration',
@@ -407,6 +465,7 @@ class SimulationSession {
         finished: Boolean(active.finished),
         digest: core.digestWorld(active),
         fields: Object.freeze(active.fields.map((field) => fieldProjection(active, field))),
+        nextWave: compactWaveProjection(waveEvidence),
         lastEvents: Object.freeze(active.lastEvents.map((event) => Object.freeze({
           zone: event.zone,
           fromCellId: event.from?.id ?? null,
@@ -431,7 +490,7 @@ class SimulationSession {
         path: entry.world.path,
         selected: Object.freeze({ ...entry.selected }),
       }))),
-      selected: selectedProjection(this),
+      selected: selectedProjection(this, waveEvidence),
       placements: Object.freeze({
         source: 'm0.5.spawnTick',
         selectionRule: 'highest candidate score across resolved cells in each field per tick',
