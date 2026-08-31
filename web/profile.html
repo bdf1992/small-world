@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Small World — Elemental Profile Instrument</title>
+  <link rel="stylesheet" href="/profile.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">M0.7 developer instrument · weighted relation-wheel overlay</p>
+        <h1>Elemental Profile</h1>
+        <p class="subtitle">One canonical wheel · weighted elemental composition · inspectable local deformation</p>
+      </div>
+      <nav class="nav">
+        <a href="/">World</a>
+        <a href="/authoring">Authoring</a>
+        <button id="reset" type="button">Reset proof</button>
+      </nav>
+    </header>
+
+    <section class="panel wheel-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Model projection</p>
+          <h2>Relation wheel overlay</h2>
+        </div>
+        <span id="revision" class="tag"></span>
+      </div>
+      <canvas id="wheel" width="720" height="720" aria-label="Elemental relation wheel"></canvas>
+      <div class="legend"><span><i class="line base"></i>base composition</span><span><i class="line effective"></i>effective after Property deformation</span></div>
+      <div id="wheelReadout" class="small"></div>
+    </section>
+
+    <aside class="controls">
+      <section class="panel">
+        <div class="panel-heading"><div><p class="eyebrow">Identity</p><h2>Element weights</h2></div><span class="tag">authoritative probe input</span></div>
+        <p class="small">Elemental Identity is the weighted composition. Every positive Element contributes the same canonical relation wheel from its own origin.</p>
+        <div id="weights" class="weight-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading"><div><p class="eyebrow">Property / rule</p><h2>Local deformation</h2></div><span class="tag">does not mutate base</span></div>
+        <p class="small">This first generic proof scales one Element's contribution. It demonstrates the boundary; it is not a complete Property language.</p>
+        <div class="deform-row">
+          <label>origin<select id="deformOrigin"></select></label>
+          <label>factor<input id="deformFactor" type="number" min="0" step="0.1"></label>
+          <button id="applyDeformation" type="button">Apply</button>
+        </div>
+        <div id="trace" class="trace"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading"><div><p class="eyebrow">Measured record</p><h2>State view</h2></div><span id="changed" class="tag"></span></div>
+        <div id="measurement" class="measurement"></div>
+      </section>
+    </aside>
+
+    <section class="panel matrix-panel">
+      <div class="panel-heading"><div><p class="eyebrow">Keep the why</p><h2>Contribution matrix</h2></div><span class="tag">base → effective</span></div>
+      <p class="small">Each target Element shows every overlaid relation that contributes to it. Fire 10 / Water 1 therefore remains Fire-heavy and Water-present everywhere the two wheels overlap.</p>
+      <div id="matrix" class="matrix"></div>
+    </section>
+  </main>
+  <script src="/profile.js" defer></script>
+</body>
+</html>

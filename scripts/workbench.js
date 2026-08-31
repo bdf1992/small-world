@@ -6,6 +6,7 @@ const path = require('path');
 const { resolveWorld, DEFAULTS } = require('../src/app/world');
 const { createSimulationSession } = require('../src/app/simulation');
 const { createResolutionAuthoringSession } = require('../src/app/resolution-session');
+const { createElementalProfileProbe } = require('../src/app/elemental-profile-probe');
 
 const WEB_ROOT = path.join(__dirname, '..', 'web');
 
@@ -82,6 +83,25 @@ function applySimulationAction(session, url) {
   throw new Error(`unknown simulation action: ${action}`);
 }
 
+function applyProfileAction(profile, url) {
+  const action = url.pathname.slice('/api/profile/'.length);
+  if (!action || action === 'snapshot') return profile.snapshot();
+  if (action === 'reset') return profile.reset();
+  if (action === 'set-weight') {
+    return profile.setWeight({
+      element: textParam(url.searchParams, 'element'),
+      weight: numberParam(url.searchParams, 'weight'),
+    });
+  }
+  if (action === 'set-deformation') {
+    return profile.setDeformation({
+      origin: textParam(url.searchParams, 'origin'),
+      factor: numberParam(url.searchParams, 'factor'),
+    });
+  }
+  throw new Error(`unknown profile action: ${action}`);
+}
+
 function applyAuthoringAction(session, url) {
   const action = url.pathname.slice('/api/authoring/'.length);
   if (!action || action === 'snapshot') return session.snapshot();
@@ -114,11 +134,14 @@ function applyAuthoringAction(session, url) {
 function createWorkbenchServer({
   simulation = createSimulationSession({ seed: DEFAULTS.seed }),
   authoring = createResolutionAuthoringSession({ seed: DEFAULTS.seed }),
+  profile = createElementalProfileProbe(),
 } = {}) {
   return http.createServer((req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost');
       if (url.pathname === '/api/world') return sendJson(res, 200, resolveWorld(parseWorldRequest(url)));
+      if (url.pathname === '/api/profile') return sendJson(res, 200, profile.snapshot());
+      if (url.pathname.startsWith('/api/profile/')) return sendJson(res, 200, applyProfileAction(profile, url));
       if (url.pathname === '/api/authoring/document' && req.method === 'GET') return sendJson(res, 200, authoring.exportDocument());
       if (url.pathname === '/api/authoring/document.txt' && req.method === 'GET') return send(res, 200, authoring.serializeDocument(), 'application/json');
       if (url.pathname === '/api/authoring/document' && req.method === 'POST') {
@@ -135,12 +158,15 @@ function createWorkbenchServer({
       if (url.pathname === '/api/simulation') return sendJson(res, 200, simulation.snapshot());
       if (url.pathname.startsWith('/api/simulation/')) return sendJson(res, 200, applySimulationAction(simulation, url));
       if (url.pathname === '/' || url.pathname === '/index.html') return serveFile(res, 'parity.html', 'text/html');
+      if (url.pathname === '/profile') return serveFile(res, 'profile.html', 'text/html');
       if (url.pathname === '/authoring') return serveFile(res, 'authoring.html', 'text/html');
       if (url.pathname === '/classic') return serveFile(res, 'index.html', 'text/html');
       if (url.pathname === '/parity.js') return serveFile(res, 'parity.js', 'text/javascript');
       if (url.pathname === '/inspector.js') return serveFile(res, 'inspector.js', 'text/javascript');
+      if (url.pathname === '/profile.js') return serveFile(res, 'profile.js', 'text/javascript');
       if (url.pathname === '/world-language.js') return serveFile(res, 'world-language.js', 'text/javascript');
       if (url.pathname === '/parity.css') return serveFile(res, 'parity.css', 'text/css');
+      if (url.pathname === '/profile.css') return serveFile(res, 'profile.css', 'text/css');
       if (url.pathname === '/world-language.css') return serveFile(res, 'world-language.css', 'text/css');
       if (url.pathname === '/authoring.js') return serveFile(res, 'authoring.js', 'text/javascript');
       if (url.pathname === '/card-editor.js') return serveFile(res, 'card-editor.js', 'text/javascript');
@@ -170,6 +196,7 @@ function main() {
   server.listen(port, '127.0.0.1', () => {
     const address = server.address();
     console.log(`Small World workbench: http://127.0.0.1:${address.port}`);
+    console.log(`Elemental Profile: http://127.0.0.1:${address.port}/profile`);
     console.log(`Authoring & Resolution: http://127.0.0.1:${address.port}/authoring`);
     console.log('Card and Pack edits change authored revision; Hops / Slots / Instances change only resolution revision.');
     console.log('Authoring Document export/import is plain-data JSON and excludes runtime/lifecycle state.');
@@ -180,4 +207,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { createWorkbenchServer, parseWorldRequest, integerParam, numberParam, textParam, readBody, applySimulationAction, applyAuthoringAction };
+module.exports = { createWorkbenchServer, parseWorldRequest, integerParam, numberParam, textParam, readBody, applySimulationAction, applyProfileAction, applyAuthoringAction };
