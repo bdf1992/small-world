@@ -24,6 +24,7 @@ async function request(action = '', params = {}) {
 
 function vectorArray(vector) { return state.elements.map((name) => Number(vector?.[name] ?? 0)); }
 function argmax(values) { let best = 0; for (let i=1;i<values.length;i++) if (values[i] > values[best]) best = i; return best; }
+function argmaxAbs(values) { let best = 0; for (let i=1;i<values.length;i++) if (Math.abs(values[i]) > Math.abs(values[best])) best = i; return best; }
 function rootColor(root) { let h = 0; for (const ch of String(root ?? 'none')) h = ((h << 5) - h + ch.charCodeAt(0)) | 0; return `hsl(${Math.abs(h)%360} 58% 58%)`; }
 function mixHex(hex, k) { const n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255,q=v=>Math.round(v*k+10*(1-k));return `rgb(${q(r)},${q(g)},${q(b)})`; }
 function pointInPoly(p, poly) { let inside=false; for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a.y>p.y)!==(b.y>p.y))&&(p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y+1e-30)+a.x))inside=!inside;}return inside; }
@@ -61,14 +62,32 @@ function cellFill(cell, mode) {
     const certainty = 1 - Math.min(1, Number(cell.entropy || 0) / Math.log(8));
     const v=Math.round(18+certainty*180);return `rgb(${v},${Math.round(v*.86)},${Math.round(v*1.05)})`;
   }
+  if (mode === 'noise') {
+    const p = vectorArray(cell.noise), e=argmaxAbs(p), strength=Math.min(1,Math.abs(p[e]));
+    return mixHex(COLORS[e], .22 + .66*strength);
+  }
+  if (mode === 'prior') {
+    const p = vectorArray(cell.prior), e=argmax(p);
+    return mixHex(COLORS[e], .24 + .66*Math.min(1,p[e]));
+  }
   if (mode === 'pressure') {
     const p = vectorArray(cell.externalPressure), e=argmax(p); return mixHex(COLORS[e], .28 + .62*Math.min(1,p[e]));
+  }
+  if (mode === 'spawn') {
+    const p = vectorArray(cell.spawnField), total=sum(p);if(!total)return '#0c0a0f';const e=argmax(p);return mixHex(COLORS[e],.24+.68*Math.min(1,total));
   }
   if (mode === 'time') {
     const p = vectorArray(cell.temporalPressure), total=sum(p);if(!total)return '#0c0a0f';const e=argmax(p);return mixHex(COLORS[e],.25+.70*Math.min(1,total/3));
   }
+  if (mode === 'field') {
+    const p = vectorArray(cell.fieldVector), e=argmax(p);return mixHex(COLORS[e],.28+.64*Math.min(1,p[e]));
+  }
   if (cell.resolved) return mixHex(COLORS[cell.elementIndex], .76);
   const dom=argmax(probability), certainty=1-Math.min(1,Number(cell.entropy||0)/Math.log(8));return mixHex(COLORS[dom],.12+.35*certainty);
+}
+
+function placementGlyph(type) {
+  return { POI:'⌂', Artifact:'◇', Persona:'●', Event:'✦' }[type] ?? '✦';
 }
 
 function drawWorld() {
@@ -80,13 +99,19 @@ function drawWorld() {
     ctx.save();ringClip(ctx,canvas,field);const frontier=frontiers[fieldIndex];
     for(const cell of field.cells){
       pathPoly(ctx,canvas,cell.polygon);ctx.fillStyle=cellFill(cell,mode);ctx.fill();
-      ctx.save();pathPoly(ctx,canvas,cell.polygon);ctx.clip();ctx.globalAlpha=.38;
-      for(const dot of cell.preview){const p=w2c(canvas,dot.point);ctx.beginPath();ctx.arc(p.x,p.y,2.4,0,Math.PI*2);ctx.fillStyle=COLORS[dot.elementIndex];ctx.fill();}
-      ctx.restore();
+      if(mode==='element'){
+        ctx.save();pathPoly(ctx,canvas,cell.polygon);ctx.clip();ctx.globalAlpha=.38;
+        for(const dot of cell.preview){const p=w2c(canvas,dot.point);ctx.beginPath();ctx.arc(p.x,p.y,2.4,0,Math.PI*2);ctx.fillStyle=COLORS[dot.elementIndex];ctx.fill();}
+        ctx.restore();
+      }
       pathPoly(ctx,canvas,cell.polygon);ctx.lineWidth=selected&&selected.zone===cell.zone&&selected.id===cell.id?4:cell.nucleus?2.7:frontier.has(cell.id)?1.5:.75;
       ctx.strokeStyle=selected&&selected.zone===cell.zone&&selected.id===cell.id?'#fff0bd':cell.nucleus?'#e5bd6f':frontier.has(cell.id)?'#76657f':'#251e2b';ctx.stroke();
       if(cell.collision){const p=w2c(canvas,cell.point);ctx.strokeStyle='#c3b1ef';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(p.x-4,p.y-4);ctx.lineTo(p.x+4,p.y+4);ctx.moveTo(p.x+4,p.y-4);ctx.lineTo(p.x-4,p.y+4);ctx.stroke();}
-      if(cell.spawns.length){const p=w2c(canvas,cell.point);ctx.beginPath();ctx.arc(p.x,p.y,4+Math.min(4,cell.spawns.length),0,Math.PI*2);ctx.fillStyle='#f4e2b3';ctx.fill();}
+      if(cell.spawns.length){
+        const p=w2c(canvas,cell.point),latest=cell.spawns[cell.spawns.length-1];
+        ctx.beginPath();ctx.arc(p.x,p.y,4+Math.min(4,cell.spawns.length),0,Math.PI*2);ctx.fillStyle='#f4e2b3';ctx.fill();
+        ctx.fillStyle='#f4e2b3';ctx.font='600 12px ui-monospace';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(placementGlyph(latest.type),p.x+8,p.y-8);
+      }
     }
     for(const id of field.nuclei){const cell=cellBy(field,id);if(!cell)continue;const p=w2c(canvas,cell.point);ctx.beginPath();ctx.arc(p.x,p.y,8,0,Math.PI*2);ctx.strokeStyle='#f1cc7e';ctx.lineWidth=2;ctx.stroke();}
     ctx.restore();
@@ -106,7 +131,7 @@ function drawClock() {
   $('clockReadout').textContent=`cycle ${clock.cycle} · tick ${clock.tick}/60 · position ${clock.position}:${clock.tickInPosition} · address ${clock.address} · phase ${clock.phase.toFixed(2)}`;
 }
 
-function renderLegend(){ $('legend').innerHTML=state.elements.map((e,i)=>`<span><i class="sw" style="background:${COLORS[i]}"></i>${e}</span>`).join('')+'<span>·</span><span style="color:#e5bd6f">○ nucleus</span><span style="color:#7a6a85">□ frontier</span><span style="color:#c3b1ef">× collision</span><span>· ✦ spawn</span>'; }
+function renderLegend(){ $('legend').innerHTML=state.elements.map((e,i)=>`<span><i class="sw" style="background:${COLORS[i]}"></i>${e}</span>`).join('')+'<span>·</span><span style="color:#e5bd6f">○ nucleus</span><span style="color:#7a6a85">□ frontier</span><span style="color:#c3b1ef">× collision</span><span>· ⌂ POI · ◇ Artifact · ● Persona · ✦ Event</span>'; }
 
 function renderCrumb(){const bits=['World',...state.stack.map((entry)=>`#${entry.selected.id}`)];if(state.active.depth)bits.push(`#${state.active.parentCellId}`);$('crumb').innerHTML=`<b>${DEPTH_NAMES[Math.min(state.active.depth,DEPTH_NAMES.length-1)]}</b> · ${bits.join(' › ')} · active seed <span class="mono">${state.active.seed}</span>`;}
 
@@ -117,10 +142,34 @@ function renderZones(){
 function vectorBars(vector){return entries(vector).map(([name,value,index])=>`<div class="grid8"><span>${name}</span><span class="bar"><i style="width:${Math.max(0,Math.min(100,value*100)).toFixed(1)}%;background:${COLORS[index]}"></i></span><span>${(value*100).toFixed(0)}%</span></div>`).join('');}
 
 function topVector(vector,count=3){return entries(vector).sort((a,b)=>b[1]-a[1]).slice(0,count).map(([n,v])=>`${n} ${(v*100).toFixed(0)}%`).join(' · ');}
+function topSignedVector(vector,count=3){return entries(vector).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,count).map(([n,v])=>`${n} ${v>=0?'+':''}${v.toFixed(3)}`).join(' · ');}
 
-function renderSelected(){const selected=state.selected;if(!selected){$('selected').innerHTML='Select a visible cell.';return;}const c=selected.cell;$('selected').innerHTML=`<div class="selected-title">${c.zoneName} · cell #${c.id}</div><div class="small">${c.nucleus?'<span class="tag nucleus">nucleus</span>':''}${c.collision?'<span class="tag collision">front collision</span>':''}${c.resolved?`resolved ${c.element}`:`unresolved · H ${c.entropy.toFixed(3)}`} · neighbors ${c.neighbors.length}<br>root ${escapeHtml(c.root??'—')} · collapse wave ${c.collapseWave??'—'}</div><div class="metric-grid"><div class="metric">initial entropy<b>${Number(c.initialEntropy).toFixed(3)}</b></div><div class="metric">current entropy<b>${Number(c.entropy).toFixed(3)}</b></div></div>${vectorBars(c.probability)}<div class="small" style="margin-top:7px"><b>Cyclic seat</b> ${Number(c.cyclicSeat??0).toFixed(2)}<br><b>Static pressure</b> ${topVector(c.externalPressure)}<br><b>Temporal pressure</b> ${c.temporalPressureTotal?topVector(c.temporalPressure):'none'}<br><b>Support updates</b> ${c.supportHits}<br><b>Roots touched</b> ${c.rootsTouched.length?c.rootsTouched.map(escapeHtml).join(' · '):'none yet'}<br><b>Visible recursion</b> ${c.preview.length} deterministic child samples; Dive materializes the conditioned graph.</div>`;}
+function selectedMapFieldDisclosure(selected){
+  const map=selected?.mapField;
+  if(!map)return '';
+  const readings=Object.values(map.clockReading.byTarget).sort((a,b)=>b.score-a.score);
+  const strongest=readings[0],weakest=readings[readings.length-1];
+  const composition=map.effectiveFieldComposition.resolved;
+  const prior=map.priorProvenance;
+  const pressure=prior.pressureProvenance;
+  const weights=prior.logitWeights;
+  const smoothing=prior.smoothing;
+  const formula=selected.cell.resolved
+    ? `${Math.round(composition.prior*100)}% prior + ${Math.round(composition.resolvedElement*100)}% resolved + ${Math.round(composition.externalPressure*100)}% pressure + ${Math.round(composition.spawnField*100)}% spawn + ${Math.round(composition.temporalPressure*100)}% temporal → normalized`
+    : 'unresolved cell: effective field is the current probability field';
+  const priorFormula=`${weights.zonePrior.toFixed(2)}·zonePrior + ${weights.logExternalPressure.toFixed(2)}·ln(max(${weights.pressureFloor}, pressure)) + ${weights.coherentNoise.toFixed(2)}·noise → softmax`;
+  const pressureFormula=pressure.mode==='local'
+    ? `local radius ${pressure.normalizedRadius.toFixed(3)} → seat ${pressure.seat.toFixed(3)}; base profile ↔ rotated profile mix ${pressure.baseToRotatedMix.toFixed(2)}`
+    : `root radius ${pressure.radius.toFixed(3)} → radial seat ${pressure.radialSeat.toFixed(3)}; cyclic profile ↔ zone anchor mix ${pressure.cyclicToZoneAnchorMix.toFixed(2)}${pressure.barrier?`; Barrier toward-edge seat ${pressure.barrier.towardEdgeSeat.toFixed(3)} mixed ${pressure.barrier.mix.toFixed(2)}`:''}`;
+  const placementHistory=map.placement.history.length
+    ? map.placement.history.slice(-4).map((item)=>`${escapeHtml(item.type)} @ ${escapeHtml(item.at)}`).join(' · ')
+    : 'none yet';
+  return `<details class="selected-profile-disclosure"><summary><span>Map field evidence</span><span class="tag">noise · prior · placement</span></summary><div class="profile-disclosure-body"><div class="small">Source <span class="mono">${escapeHtml(map.source)}</span>. This is the map cell's measured elemental field, <b>not an Artifact Elemental Identity</b>.</div><div class="small" style="margin-top:7px"><b>Smoothed coherent noise</b> ${topSignedVector(map.noise)}<br><b>Smoothed prior</b> ${topVector(map.prior)}<br><b>External/radial pressure</b> ${topVector(map.externalPressure)}<br><b>Spawn influence</b> ${sum(Object.values(map.spawnField))?topVector(map.spawnField):'none yet'}<br><b>Temporal pressure</b> ${sum(Object.values(map.temporalPressure))?topVector(map.temporalPressure):'none yet'}<br><b>Effective local field</b> ${topVector(map.effectiveField)}</div><div class="small" style="margin-top:7px"><b>Pressure derivation</b><br>${escapeHtml(pressureFormula)}<br><b>Replayed pressure</b> ${topVector(pressure.result)}<br><span class="mono">${escapeHtml(pressure.source)}</span></div><div class="small" style="margin-top:7px"><b>Prior derivation</b><br><span class="mono">${escapeHtml(priorFormula)}</span><br><b>Zone prior</b> ${topSignedVector(prior.zonePrior)}<br><b>Raw coherent noise</b> ${topSignedVector(prior.coherentNoiseRaw)}<br><b>Pre-smoothing prior</b> ${topVector(prior.preSmoothingPrior)} · H ${prior.preSmoothingEntropy.toFixed(3)}<br><b>Adjacency smoothing</b> ${smoothing.passes} passes · α ${smoothing.alpha.toFixed(2)} · self ${smoothing.selfWeight.toFixed(2)} / neighbor mean ${smoothing.neighborMeanWeight.toFixed(2)}<br><b>Final prior</b> ${topVector(prior.finalPrior)} · H ${prior.finalPriorEntropy.toFixed(3)}<br><span class="mono">${escapeHtml(prior.source)}</span></div><div class="small" style="margin-top:7px"><b>Effective-field construction</b><br>${escapeHtml(formula)}</div><div class="profile-clock-read"><b>Relation reading of the effective field</b><br>${escapeHtml(map.clockReading.side)} / ${escapeHtml(map.clockReading.orientation)} @ <span class="mono">${escapeHtml(map.clockReading.at)}</span><br>strongest contextual target <b>${escapeHtml(strongest.target)} ${strongest.score.toFixed(3)}</b><br>weakest <b>${escapeHtml(weakest.target)} ${weakest.score.toFixed(3)}</b></div><div class="small" style="margin-top:7px"><b>Placement history</b> ${map.placement.history.length} realized spawn${map.placement.history.length===1?'':'s'} at this address.<br>${placementHistory}<br>Current placement candidates and their score decomposition are shown in Spawn proposition below.</div></div></details>`;
+}
 
-function renderSpawn(){const selected=state.selected;if(!selected?.cell.resolved){$('spawnExplain').innerHTML='Resolve and select a cell to inspect deterministic spawn scores.';return;}const scores=selected.spawnCandidates,lo=Math.min(...scores.map((s)=>s.score)),hi=Math.max(...scores.map((s)=>s.score));$('spawnExplain').innerHTML=`<div class="small">Clock <span class="mono">${state.clock.address}</span> · ${state.clock.orientation} · current spawn cycle is re-read from world field + temporal phase.</div>${scores.map((s)=>{const width=hi===lo?100:(s.score-lo)/(hi-lo)*85+15;return `<div class="candidate"><span>${s.type}</span><span class="bar"><i style="width:${width}%;background:#8e779d"></i></span><b>${s.score.toFixed(2)}</b></div><div class="small" style="margin:-2px 0 4px 67px">cycle ${s.cycleFit.toFixed(2)} · phase ${s.phaseFit.toFixed(2)} · field ${s.fieldFit.toFixed(2)} · relation ${s.relationFit.toFixed(2)} · seed ${s.random.toFixed(2)}</div>`;}).join('')}`;}
+function renderSelected(){const selected=state.selected;if(!selected){$('selected').innerHTML='Select a visible cell.';return;}const c=selected.cell;$('selected').innerHTML=`<div class="selected-title">${c.zoneName} · cell #${c.id}</div><div class="small">${c.nucleus?'<span class="tag nucleus">nucleus</span>':''}${c.collision?'<span class="tag collision">front collision</span>':''}${c.resolved?`resolved ${c.element}`:`unresolved · H ${c.entropy.toFixed(3)}`} · neighbors ${c.neighbors.length}<br>root ${escapeHtml(c.root??'—')} · collapse wave ${c.collapseWave??'—'}</div><div class="metric-grid"><div class="metric">initial entropy<b>${Number(c.initialEntropy).toFixed(3)}</b></div><div class="metric">current entropy<b>${Number(c.entropy).toFixed(3)}</b></div></div>${vectorBars(c.probability)}${selectedMapFieldDisclosure(selected)}<div class="small" style="margin-top:7px"><b>Cyclic seat</b> ${Number(c.cyclicSeat??0).toFixed(2)}<br><b>Static pressure</b> ${topVector(c.externalPressure)}<br><b>Temporal pressure</b> ${c.temporalPressureTotal?topVector(c.temporalPressure):'none'}<br><b>Support updates</b> ${c.supportHits}<br><b>Roots touched</b> ${c.rootsTouched.length?c.rootsTouched.map(escapeHtml).join(' · '):'none yet'}<br><b>Visible recursion</b> ${c.preview.length} deterministic child samples; Dive materializes the conditioned graph.</div>`;}
+
+function renderSpawn(){const selected=state.selected;if(!selected?.cell.resolved){$('spawnExplain').innerHTML='Resolve and select a cell to inspect deterministic spawn scores.';return;}const scores=selected.mapField.placement.candidates,lo=Math.min(...scores.map((s)=>s.score)),hi=Math.max(...scores.map((s)=>s.score));$('spawnExplain').innerHTML=`<div class="small">Placement is derived, not arbitrary. Clock <span class="mono">${state.clock.address}</span> · ${state.clock.orientation}; each candidate is scored from field + relation + cycle + phase + zone + side + deterministic seeded variation.</div>${scores.map((s)=>{const width=hi===lo?100:(s.score-lo)/(hi-lo)*85+15;return `<div class="candidate"><span>${s.type}</span><span class="bar"><i style="width:${width}%;background:#8e779d"></i></span><b>${s.score.toFixed(2)}</b></div><div class="small" style="margin:-2px 0 4px 67px">field ${s.fieldFit.toFixed(2)} · relation ${s.relationFit.toFixed(2)} · cycle ${s.cycleFit.toFixed(2)} · phase ${s.phaseFit.toFixed(2)} · zone ${s.zoneBase.toFixed(2)} · side ${s.side.toFixed(2)} · seed ${s.random.toFixed(2)}</div>`;}).join('')}`;}
 
 function temporalCard(subject,title){if(!subject)return '';const top=sum(Object.values(subject.glass.top)),bottom=sum(Object.values(subject.glass.bottom)),rate=sum(Object.values(subject.lastRate));const primary=entries(subject.profile).sort((a,b)=>b[1]-a[1])[0]?.[0]??'—';return `<div class="temporal-card"><strong>${title}</strong> ${subject.completed?'<span class="tag good">resolved</span>':''}<div class="small">wants <b>${primary}</b> · Top ${top} → Bottom ${bottom}/${subject.threshold} · rate Σ ${rate.toFixed(2)} · cycles ${subject.cycles}</div>${state.elements.map((e,i)=>{const r=subject.lastRate[e]||0,p=subject.profile[e]||0,t=subject.glass.top[e]||0,b=subject.glass.bottom[e]||0;return(t||b||p>.16)?`<div class="temporal-row"><span style="color:${COLORS[i]}">${e}</span><span class="bar"><i style="width:${Math.min(100,r*55)}%;background:${COLORS[i]}"></i></span><span>${Number(r).toFixed(2)}</span></div>`:'';}).join('')}${subject.lastPulse?`<div class="small pulse">last threshold: ${escapeHtml(subject.lastPulse.type)} @ ${escapeHtml(subject.lastPulse.at)}</div>`:''}</div>`;}
 
@@ -130,7 +179,7 @@ function renderHourglass(){const h=state.hourglass,top=sum(Object.values(h.top))
 
 function renderGenerative(){const g=state.generative;$('generativeStatus').textContent=g.status;$('generativeStatus').className=`tag ${g.status==='resolved'?'good':''}`;const objects=g.objects;$('generative').innerHTML=`<div class="small">The RFC field remains the live world surface. This overlay exposes the M0.6 Definition→Template→Reference→Virtual→Instance construction without replacing that surface.</div><div class="generative-grid">${g.map.regions.map((region)=>{const regionObject=objects[region.key],field=region.field,dom=Object.entries(field).sort((a,b)=>b[1]-a[1])[0],child=regionObject.children[0],situation=child?objects[child.key]:null;return `<div class="generative-region"><strong>${escapeHtml(region.label)}</strong><div class="field">${dom?`${escapeHtml(dom[0])} ${(dom[1]*100).toFixed(0)}%`:''}</div>${situation?`<span class="generative-child"><b>${escapeHtml(situation.label)}</b><br>${situation.children.map((m)=>`<span class="generative-member">${escapeHtml(m.role)} → ${escapeHtml(m.label)}</span>`).join('<br>')}</span>`:'<span class="generative-child">unresolved</span>'}</div>`;}).join('')}</div>${g.stops.length?`<div class="frontier">Generative frontier: ${g.stops.map((s)=>escapeHtml(s.reason)).join(' · ')}</div>`:''}`;}
 
-function renderLedger(){$('ledger').innerHTML=state.ledger.slice().reverse().slice(0,80).map((x)=>`<div class="log"><span class="tag">${escapeHtml(x.zoneName??'RFC')}</span><strong>${escapeHtml(x.type)}</strong>${x.cellId!=null?` → cell ${x.cellId}`:''}<div class="small">${escapeHtml(x.at??'')}${x.score!=null?` · score ${x.score.toFixed(3)}`:''}${x.relationFit!=null?` · relation ${x.relationFit.toFixed(2)}`:''}${x.transfer!=null?` · grains moved ${x.transfer}`:''}${x.blocked?` · blocked ${x.blocked}`:''}</div></div>`).join('')||'<div class="small">Generation resolves spatially first. Every clock crossing then progresses biome / Persona / Event hourglasses, diffuses resulting pressure, evaluates cyclic spawn propositions, and advances exactly one tick.</div>';}
+function renderLedger(){$('ledger').innerHTML=state.ledger.slice().reverse().slice(0,80).map((x)=>`<div class="log"><span class="tag">${escapeHtml(x.zoneName??'RFC')}</span><strong>${escapeHtml(x.type)}</strong>${x.cellId!=null?` → cell ${x.cellId}`:''}<div class="small">${escapeHtml(x.at??'')}${x.score!=null?` · score ${x.score.toFixed(3)}`:''}${x.fieldFit!=null?` · field ${x.fieldFit.toFixed(2)}`:''}${x.relationFit!=null?` · relation ${x.relationFit.toFixed(2)}`:''}${x.cycleFit!=null?` · cycle ${x.cycleFit.toFixed(2)}`:''}${x.phaseFit!=null?` · phase ${x.phaseFit.toFixed(2)}`:''}${x.zoneBase!=null?` · zone ${x.zoneBase.toFixed(2)}`:''}${x.side!=null?` · side ${x.side.toFixed(2)}`:''}${x.random!=null?` · seed ${x.random.toFixed(2)}`:''}${x.transfer!=null?` · grains moved ${x.transfer}`:''}${x.blocked?` · blocked ${x.blocked}`:''}</div></div>`).join('')||'<div class="small">Generation resolves spatially first. Every clock crossing then progresses biome / Persona / Event hourglasses, diffuses resulting pressure, evaluates cyclic spawn propositions, and advances exactly one tick.</div>';}
 
 function updateStatus(){const done=state.active.fields.reduce((s,f)=>s+f.resolved,0),all=state.active.fields.reduce((s,f)=>s+f.total,0),el=$('status');$('back').disabled=!state.stack.length;$('dive').disabled=!state.selected?.cell.resolved;$('spend').disabled=!state.selected?.cell.resolved;if(state.active.finished){el.className=state.active.depth?'status child':'status ready';el.textContent=`${state.active.depth?'Recursive':'Root'} RFC resolved · ${done}/${all} cells · ${state.active.wave} wave steps · fingerprint ${state.active.digest.slice(0,12)}`;}else{el.className='status running';el.textContent=`RFC wave ${state.active.wave} · ${done}/${all} cells · ${state.active.fields.reduce((s,f)=>s+f.nuclei.length,0)} nuclei · ${state.active.lastEvents.filter((e)=>e.collision).length} collision edges this wave`;} $('toggle').textContent=running?'Pause':state.active.finished?'Replay + Play':'Play';}
 

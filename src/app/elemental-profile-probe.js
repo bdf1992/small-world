@@ -6,6 +6,16 @@ const {
   RELATION_WHEEL,
   deformElementalProfile,
 } = require('../model/elemental-profile');
+const {
+  admitRelation,
+  createTraversal,
+  createCrossing,
+  createTraversalBlocked,
+} = require('../model/relation-traversal');
+const {
+  clockProjection,
+  clockProfileReading,
+} = require('./elemental-clock-context');
 
 const DEFAULT_COMPOSITION = Object.freeze({ Fire: 10, Water: 1 });
 const DEFAULT_DEFORMATION = Object.freeze({
@@ -14,6 +24,46 @@ const DEFAULT_DEFORMATION = Object.freeze({
   factor: 2,
   source: 'Property.ProfileScale',
 });
+
+function authoredVirtualRelation({ id, relationType, source }) {
+  return Object.freeze({
+    kind: 'Virtual<Relation>',
+    id,
+    relationType,
+    lifecycle: 'candidate',
+    source,
+    readOnly: true,
+    authority: 'authored-candidate',
+    admission: null,
+    effects: Object.freeze([]),
+  });
+}
+
+const CLOCK_TICK_RELATION = admitRelation(
+  authoredVirtualRelation({
+    id: 'VirtualRelation.ClockHandTick',
+    relationType: 'ClockHandTick',
+    source: 'Artifact.Clock authored topology',
+  }),
+  {
+    id: 'Admission.ClockHandTickTopology',
+    source: 'Artifact.Clock authored topology',
+    basis: 'Artifact.ClockHand traverses adjacent Tick addresses on Artifact.ClockFace',
+  },
+);
+
+const HOURGLASS_NECK_RELATION = admitRelation(
+  authoredVirtualRelation({
+    id: 'VirtualRelation.HourglassNeck',
+    relationType: 'HourglassNeck',
+    source: 'Artifact.Hourglass authored topology',
+  }),
+  {
+    id: 'Admission.HourglassNeckTopology',
+    source: 'Artifact.Hourglass authored topology',
+    basis: 'Grain traverses from Hourglass.Upper through Hourglass.Neck to Hourglass.Lower',
+  },
+);
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -25,19 +75,6 @@ function vectorObject(vector = []) {
   ));
 }
 
-function clockProjection(clock) {
-  return Object.freeze({
-    cycle: clock.cycle,
-    tick: clock.tick,
-    side: clock.side ? 'Night' : 'Day',
-    orientation: clock.side ? 'CCW' : 'CW',
-    position: clock.position,
-    tickInPosition: clock.tickInPosition,
-    address: clock.address(),
-    phase: clock.phase(1),
-  });
-}
-
 function hourglassProjection(hourglass) {
   return Object.freeze({
     capacity: hourglass.cap,
@@ -45,51 +82,6 @@ function hourglassProjection(hourglass) {
     upper: vectorObject(hourglass.top),
     lower: vectorObject(hourglass.bottom),
     timeless: vectorObject(hourglass.out),
-  });
-}
-
-function clockProfileReading(profile, clock) {
-  const byTarget = {};
-
-  for (const [targetIndex, target] of ELEMENT_RING.entries()) {
-    const contributions = [];
-    let score = 0;
-
-    for (const [originIndex, origin] of ELEMENT_RING.entries()) {
-      const share = Number(profile.shares[origin] ?? 0);
-      if (share <= 0) continue;
-
-      const canonical = (profile.byElement[target] ?? []).find((entry) => entry.origin === origin);
-      const dynamic = core.dynamicRelationWeight(originIndex, targetIndex, clock);
-      const contributionScore = share * dynamic.weight;
-      score += contributionScore;
-
-      contributions.push(Object.freeze({
-        origin,
-        target,
-        rawWeight: Number(profile.composition[origin] ?? 0),
-        share,
-        canonicalRole: canonical?.role ?? null,
-        contextualRole: core.R[dynamic.r],
-        modulation: dynamic.modulation,
-        signedWeight: dynamic.weight,
-        contributionScore,
-      }));
-    }
-
-    byTarget[target] = Object.freeze({
-      target,
-      score,
-      contributions: Object.freeze(contributions),
-    });
-  }
-
-  return Object.freeze({
-    at: clock.address(),
-    side: clock.side ? 'Night' : 'Day',
-    orientation: clock.side ? 'CCW' : 'CW',
-    phase: clock.phase(1),
-    byTarget: Object.freeze(byTarget),
   });
 }
 
@@ -157,22 +149,28 @@ class ElementalProfileProbe {
 
     const afterClock = clockProjection(this.clock);
     const afterReading = clockProfileReading(resolved.effective, this.clock);
-    const crossing = Object.freeze({
-      id: `Crossing.${this.crossings.length + 1}`,
+    const crossingIndex = this.crossings.length + 1;
+    const traversal = createTraversal({
+      id: `Traversal.ClockHand.${crossingIndex}`,
+      kind: 'Traversal.ClockHand',
+      entity: 'Artifact.ClockHand',
+      relation: CLOCK_TICK_RELATION,
+      from: beforeClock.address,
+      via: 'Artifact.ClockFace',
+      to: afterClock.address,
+      distance: '1 tick',
+      at: afterClock.address,
+    });
+    const crossing = createCrossing({
+      id: `Crossing.${crossingIndex}`,
       kind: 'Crossing.ClockHandTick',
       entity: 'Artifact.ClockHand',
+      traversal,
       boundary: `Tick.${afterClock.tick}`,
       newlyAddressable: afterClock.address,
-      traversal: Object.freeze({
-        kind: 'Traversal.ClockHand',
-        admitted: true,
-        from: beforeClock.address,
-        via: 'Artifact.ClockFace',
-        to: afterClock.address,
-        distance: '1 tick',
-      }),
-      before: Object.freeze({ clock: beforeClock, reading: beforeReading }),
-      after: Object.freeze({ clock: afterClock, reading: afterReading }),
+      before: { clock: beforeClock, reading: beforeReading },
+      after: { clock: afterClock, reading: afterReading },
+      at: afterClock.address,
     });
 
     this.crossings.push(crossing);
@@ -190,9 +188,9 @@ class ElementalProfileProbe {
     const result = this.hourglass.spend(index);
 
     if (!result.ok) {
-      this.lastBlocked = Object.freeze({
-        kind: 'TraversalBlocked',
+      this.lastBlocked = createTraversalBlocked({
         entity: `Grain.${element}`,
+        relation: HOURGLASS_NECK_RELATION,
         from: 'Hourglass.Upper',
         boundary: 'Hourglass.Neck',
         reason: result.reason,
@@ -203,25 +201,33 @@ class ElementalProfileProbe {
     }
 
     const afterHourglass = hourglassProjection(this.hourglass);
-    const crossing = Object.freeze({
-      id: `Crossing.${this.crossings.length + 1}`,
+    const crossingIndex = this.crossings.length + 1;
+    const traversal = createTraversal({
+      id: `Traversal.Grain.${crossingIndex}`,
+      kind: 'Traversal.Grain',
+      entity: `Grain.${element}`,
+      relation: HOURGLASS_NECK_RELATION,
+      from: 'Hourglass.Upper',
+      via: 'Hourglass.Neck',
+      to: 'Hourglass.Lower',
+      distance: '1 neck crossing',
+      at: this.clock.address(),
+    });
+    const baseCrossing = createCrossing({
+      id: `Crossing.${crossingIndex}`,
       kind: 'Crossing.GrainNeck',
       entity: `Grain.${element}`,
-      element,
+      traversal,
       boundary: 'Hourglass.Neck',
       newlyAddressable: 'Hourglass.Lower',
+      before: { hourglass: beforeHourglass },
+      after: { hourglass: afterHourglass },
       at: this.clock.address(),
-      traversal: Object.freeze({
-        kind: 'Traversal.Grain',
-        admitted: true,
-        from: 'Hourglass.Upper',
-        via: 'Hourglass.Neck',
-        to: 'Hourglass.Lower',
-        distance: '1 neck crossing',
-      }),
+    });
+    const crossing = Object.freeze({
+      ...baseCrossing,
+      element,
       profileReading: reading,
-      before: Object.freeze({ hourglass: beforeHourglass }),
-      after: Object.freeze({ hourglass: afterHourglass }),
     });
 
     this.crossings.push(crossing);
@@ -274,9 +280,7 @@ function createElementalProfileProbe() {
 module.exports = {
   DEFAULT_COMPOSITION,
   DEFAULT_DEFORMATION,
-  clockProjection,
   hourglassProjection,
-  clockProfileReading,
   ElementalProfileProbe,
   createElementalProfileProbe,
 };

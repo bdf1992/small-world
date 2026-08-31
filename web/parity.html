@@ -27,7 +27,7 @@
       <span class="sw-language-key" data-sw-domain="resolution">resolution</span>
       <span class="sw-language-key" data-sw-domain="evidence">evidence</span>
       <span class="sw-language-key" data-sw-domain="dynamic">dynamic</span>
-      <a class="sw-language-key" data-sw-domain="dynamic" href="/profile">elemental profile ↗</a>
+      <a class="sw-language-key" data-sw-domain="dynamic" href="/profile">standalone elemental profile probe ↗</a>
     </div>
 
     <section class="world-panel panel sw-frame" data-sw-domain="world">
@@ -39,16 +39,17 @@
         <button id="dive">Dive Into Cell</button>
         <button id="back">Back</button>
         <span class="separator"></span>
-        <button id="tick">Cross Tick + Resolve Time</button>
-        <button id="flipClock">Flip Day/Night</button>
-        <span class="separator"></span>
         <label>view
           <select id="viewMode">
             <option value="element">elements + child preview</option>
             <option value="entropy">entropy</option>
             <option value="roots">wave roots</option>
-            <option value="pressure">static pressure</option>
+            <option value="noise">coherent noise magnitude</option>
+            <option value="prior">smoothed prior</option>
+            <option value="pressure">cyclic / radial pressure</option>
+            <option value="spawn">spawn influence</option>
             <option value="time">time pressure</option>
+            <option value="field">effective local field</option>
           </select>
         </label>
         <label>wave ms <input id="speed" type="range" min="35" max="600" value="125"></label>
@@ -65,14 +66,15 @@
         <div id="zoneSummary"></div>
       </section>
 
-      <section class="panel side-panel sw-frame" data-sw-domain="instrument">
-        <div class="panel-heading"><h2>Clock</h2><button class="inspect-link" type="button" data-inspect="clock">inspect</button></div>
+      <section class="panel side-panel sw-frame clock-instrument" data-sw-domain="instrument">
+        <div class="panel-heading"><div><p class="eyebrow">Clock → Face</p><h2>Clock</h2></div><button class="inspect-link" type="button" data-inspect="clock">inspect</button></div>
         <canvas id="clock" width="300" height="300"></canvas>
         <div id="clockReadout" class="mono"></div>
+        <div class="actions instrument-actions"><button id="tick">Cross Tick + Resolve Time</button><button id="flipClock">Flip Day/Night</button></div>
       </section>
 
       <section class="panel side-panel sw-frame" data-sw-domain="world">
-        <div class="panel-heading"><h2>Selected cell</h2><button class="inspect-link" type="button" data-inspect="cell">inspect</button></div>
+        <div class="panel-heading"><div><p class="eyebrow">Map → field state</p><h2>Selected cell</h2></div><button class="inspect-link" type="button" data-inspect="cell">inspect</button></div>
         <div id="selected" class="small">Select a visible cell.</div>
       </section>
 
@@ -87,7 +89,7 @@
       </section>
 
       <section class="panel side-panel sw-frame" data-sw-domain="instrument">
-        <div class="panel-heading"><h2>Player hourglass</h2><button class="inspect-link" type="button" data-inspect="hourglass">inspect</button></div>
+        <div class="panel-heading"><div><p class="eyebrow">Hourglass → Grain / Neck</p><h2>Player hourglass</h2></div><button class="inspect-link" type="button" data-inspect="hourglass">inspect</button></div>
         <div id="hourglass"></div>
         <div class="actions"><button id="spend">Spend selected</button><button id="flipGlass">Flip glass</button></div>
       </section>
@@ -122,5 +124,76 @@
 
   <script src="/parity.js" defer></script>
   <script src="/inspector.js" defer></script>
+  <script>
+    (() => {
+      let requestRevision = 0;
+
+      function esc(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;');
+      }
+
+      function signed(value) {
+        const number = Number(value ?? 0);
+        return `${number >= 0 ? '+' : ''}${number.toFixed(3)}`;
+      }
+
+      function renderArtifactContext(evidence) {
+        const host = document.getElementById('spawnExplain');
+        if (!host) return;
+        host.querySelector('#artifact-context-relation')?.remove();
+
+        const candidate = evidence?.artifactContext;
+        if (!candidate) return;
+        const relation = candidate.relation;
+        const roles = [...relation.relationRoles]
+          .filter((row) => row.mass > 1e-9)
+          .sort((a, b) => b.mass - a.mass)
+          .slice(0, 4);
+        const roleText = roles
+          .map((row) => `${esc(row.role)} ${(row.mass * 100).toFixed(0)}% (${signed(row.signedContribution)})`)
+          .join(' · ');
+
+        const details = document.createElement('details');
+        details.id = 'artifact-context-relation';
+        details.className = 'selected-profile-disclosure';
+        details.innerHTML = `
+          <summary><span>Artifact ↔ map context</span><span class="tag">Virtual&lt;Relation&gt;</span></summary>
+          <div class="profile-disclosure-body">
+            <div class="small"><b>Virtual&lt;Artifact&gt; placement candidate</b>; this is not an Artifact instance.</div>
+            <div class="small" style="margin-top:7px"><span class="mono">${esc(candidate.address)}</span><br>${esc(relation.kind)} · ${esc(relation.relationType)} · ${esc(relation.lifecycle)} · ${esc(relation.authority)}</div>
+            <div class="small" style="margin-top:7px"><b>Artifact candidate composition</b> comes from <span class="mono">${esc(relation.artifact.source)}</span>.<br><b>Map endpoint</b> comes from <span class="mono">${esc(relation.map.source)}</span>. The two records remain separate.</div>
+            <div class="small" style="margin-top:7px"><b>M0.5 field overlap</b> ${candidate.placement.fieldOverlap.toFixed(4)} × ${candidate.placement.fieldWeight.toFixed(2)} = ${candidate.placement.fieldFit.toFixed(4)}<br><b>Directed elemental context</b> ${signed(relation.measurements.signedContextScore)} @ ${esc(relation.side)} / ${esc(relation.orientation)}<br><b>Relation-role mass</b> ${roleText}</div>
+            <div class="small" style="margin-top:7px"><b>Admission</b> none · <b>realized Artifact</b> none · <b>effects</b> none.<br>This evidence does not place, move, traverse, cross, or mutate anything.</div>
+          </div>`;
+        host.appendChild(details);
+      }
+
+      async function refreshArtifactContext() {
+        const revision = ++requestRevision;
+        try {
+          const response = await fetch('/api/simulation/placement-evidence', { cache: 'no-store' });
+          if (!response.ok) return;
+          const evidence = await response.json();
+          if (revision !== requestRevision) return;
+          renderArtifactContext(evidence);
+        } catch (_) {
+          // The main workbench remains usable if optional evidence fetch fails.
+        }
+      }
+
+      window.addEventListener('DOMContentLoaded', () => {
+        const status = document.getElementById('status');
+        if (status) {
+          const observer = new MutationObserver(() => queueMicrotask(refreshArtifactContext));
+          observer.observe(status, { childList: true, subtree: true, characterData: true });
+        }
+        setTimeout(refreshArtifactContext, 0);
+      });
+    })();
+  </script>
 </body>
 </html>

@@ -1,10 +1,16 @@
 'use strict';
 
 const core = require('../kernel/m0.5');
+const { overlayElementalProfile } = require('../model/elemental-profile');
+const { clockProjection, clockProfileReading } = require('./elemental-clock-context');
+const { fieldPriorContract, cellPriorProvenance } = require('./m0.5-map-provenance');
+const { nextWaveEvidence } = require('./m0.5-wave-provenance');
+const { selectedTopologyEvidence } = require('./m0.5-topology-provenance');
 const { resolveWorld } = require('./world');
 
 const ELEMENTS = Object.freeze([...core.E]);
 const ZONES = Object.freeze([...core.Z]);
+const PLACEMENT_TYPES = Object.freeze(['POI', 'Artifact', 'Persona', 'Event']);
 
 function vectorObject(vector = []) {
   return Object.freeze(Object.fromEntries(ELEMENTS.map((name, index) => [name, Number(vector[index] ?? 0)])));
@@ -20,10 +26,41 @@ function compactEvent(event) {
     score: Number.isFinite(event.score) ? event.score : null,
     transfer: Number.isFinite(event.transfer) ? event.transfer : null,
     blocked: Number.isFinite(event.blocked) ? event.blocked : null,
+    fieldFit: Number.isFinite(event.fieldFit) ? event.fieldFit : null,
     relationFit: Number.isFinite(event.relationFit) ? event.relationFit : null,
+    cycleFit: Number.isFinite(event.cycleFit) ? event.cycleFit : null,
+    phaseFit: Number.isFinite(event.phaseFit) ? event.phaseFit : null,
+    zoneBase: Number.isFinite(event.zoneBase) ? event.zoneBase : null,
+    side: Number.isFinite(event.side) ? event.side : null,
+    random: Number.isFinite(event.rnd) ? event.rnd : null,
     cycleSeat: Number.isFinite(event.cycleSeat) ? event.cycleSeat : event.cycle?.zoneSeat ?? null,
     entity: event.entity ? Object.freeze({ kind: event.entity.kind, id: event.entity.id }) : null,
   });
+}
+
+function placementReceipts(session) {
+  return Object.freeze(session.ledger
+    .filter((event) => PLACEMENT_TYPES.includes(event.type) && Number.isInteger(event.zone) && Number.isInteger(event.cellId) && event.score != null)
+    .map((event) => Object.freeze({
+      id: `Placement.${event.at}.${event.zone}.${event.cellId}.${event.type}`,
+      source: 'm0.5.spawnTick',
+      address: `${session.rootWorld.path}/zone:${event.zone}/cell:${event.cellId}`,
+      type: event.type,
+      at: event.at,
+      zone: event.zone,
+      zoneName: event.zoneName,
+      cellId: event.cellId,
+      score: event.score,
+      fieldFit: event.fieldFit,
+      relationFit: event.relationFit,
+      cycleFit: event.cycleFit,
+      phaseFit: event.phaseFit,
+      zoneBase: event.zoneBase,
+      side: event.side,
+      random: event.random,
+      cycleSeat: event.cycleSeat,
+      entity: event.entity,
+    })));
 }
 
 function temporalSubject(subject) {
@@ -81,6 +118,8 @@ function cellProjection(world, field, cell, { includePreview = true } = {}) {
     resolved: Boolean(cell.resolved),
     element: cell.resolved ? ELEMENTS[cell.element] : null,
     elementIndex: cell.resolved ? cell.element : null,
+    noise: vectorObject(cell.noise),
+    prior: vectorObject(cell.prior),
     probability: vectorObject(cell.resolved ? vector : cell.prob),
     fieldVector: vectorObject(vector),
     entropy: cell.resolved ? 0 : core.entropy(cell.prob),
@@ -114,20 +153,8 @@ function fieldProjection(world, field) {
     done: Boolean(field.done),
     step: field.step,
     nuclei: Object.freeze(field.nuclei.map((cell) => cell.id)),
+    priorContract: fieldPriorContract(field),
     cells: Object.freeze(field.cells.map((cell) => cellProjection(world, field, cell))),
-  });
-}
-
-function clockProjection(clock, rotation) {
-  return Object.freeze({
-    cycle: clock.cycle,
-    tick: clock.tick,
-    side: clock.side ? 'Night' : 'Day',
-    orientation: clock.side ? 'CCW' : 'CW',
-    position: clock.position,
-    tickInPosition: clock.tickInPosition,
-    address: clock.address(),
-    phase: clock.phase(rotation),
   });
 }
 
@@ -171,15 +198,118 @@ function relationProjection(clock) {
   return Object.freeze(rows);
 }
 
-function selectedProjection(session) {
+function compactWaveProjection(evidence) {
+  return Object.freeze({
+    source: evidence.source,
+    readOnly: evidence.readOnly,
+    currentWave: evidence.currentWave,
+    predictedWave: evidence.predictedWave,
+    fields: Object.freeze(evidence.fields.map((field) => Object.freeze({
+      zone: field.zone,
+      zoneName: field.zoneName,
+      done: field.done,
+      frontier: Object.freeze(field.frontier.map((item) => Object.freeze({
+        cellId: item.cellId,
+        entropy: item.entropy,
+        rootsTouched: item.rootsTouched,
+      }))),
+      rootProposals: Object.freeze(field.rootProposals.map((item) => Object.freeze({
+        root: item.root,
+        cellId: item.cellId,
+        pickScore: item.pickScore,
+      }))),
+      selectedCollapses: Object.freeze(field.selectedCollapses.map((item) => Object.freeze({
+        cellId: item.cellId,
+        selectedByRoot: item.selectedByRoot,
+        rootsTouched: item.rootsTouched,
+        collision: item.collision,
+        predictedElement: item.predictedElement,
+        predictedElementIndex: item.predictedElementIndex,
+        predictedCollapseWave: item.predictedCollapseWave,
+      }))),
+      fallback: field.fallback ? Object.freeze({ ...field.fallback }) : null,
+    }))),
+  });
+}
+
+function selectedWaveProjection(evidence, zone, cellId) {
+  const field = evidence.fields.find((candidate) => candidate.zone === zone);
+  if (!field) return null;
+  const frontier = field.frontier.find((candidate) => candidate.cellId === cellId) ?? null;
+  const proposals = field.rootProposals.filter((candidate) => candidate.cellId === cellId);
+  const collapse = field.selectedCollapses.find((candidate) => candidate.cellId === cellId) ?? null;
+  const fallback = field.fallback?.cellId === cellId ? field.fallback : null;
+  if (!frontier && !proposals.length && !collapse && !fallback) return null;
+  return Object.freeze({
+    source: evidence.source,
+    readOnly: true,
+    currentWave: evidence.currentWave,
+    predictedWave: evidence.predictedWave,
+    contract: evidence.contract,
+    frontier,
+    proposals: Object.freeze(proposals),
+    collapse,
+    fallback,
+  });
+}
+
+function selectedProjection(session, waveEvidence = nextWaveEvidence(session.activeWorld)) {
   const located = session.locateSelected();
   if (!located) return null;
   const { field, cell } = located;
+  const projectedCell = cellProjection(session.activeWorld, field, cell);
+  const effectiveField = vectorObject(core.fieldVector(cell));
+  const fieldRelationProfile = overlayElementalProfile(effectiveField);
   const supply = cell.resolved ? core.temporalSupply(session.activeWorld, session.clock, cell) : null;
+  const placementCandidates = spawnProjection(session.activeWorld, session.clock, cell);
+  const priorProvenance = cellPriorProvenance(session.activeWorld, field, cell);
+  const topologyProvenance = selectedTopologyEvidence(session.activeWorld, field, cell);
+  const receipts = session.activeWorld === session.rootWorld
+    ? placementReceipts(session).filter((receipt) => receipt.zone === cell.zone && receipt.cellId === cell.id)
+    : Object.freeze([]);
+
   return Object.freeze({
-    cell: cellProjection(session.activeWorld, field, cell),
+    cell: projectedCell,
     temporalSupply: supply ? vectorObject(supply) : null,
-    spawnCandidates: spawnProjection(session.activeWorld, session.clock, cell),
+    spawnCandidates: placementCandidates,
+    mapField: Object.freeze({
+      source: 'm0.5.map.cell',
+      position: projectedCell.point,
+      cyclicSeat: projectedCell.cyclicSeat,
+      noise: projectedCell.noise,
+      externalPressure: projectedCell.externalPressure,
+      prior: projectedCell.prior,
+      probability: projectedCell.probability,
+      initialEntropy: projectedCell.initialEntropy,
+      entropy: projectedCell.entropy,
+      resolvedElement: projectedCell.element,
+      spawnField: projectedCell.spawnField,
+      temporalPressure: projectedCell.temporalPressure,
+      effectiveField,
+      topologyProvenance,
+      priorContract: fieldPriorContract(field),
+      priorProvenance,
+      nextWave: selectedWaveProjection(waveEvidence, cell.zone, cell.id),
+      effectiveFieldComposition: Object.freeze({
+        unresolved: 'probability',
+        resolved: Object.freeze({
+          prior: 0.30,
+          resolvedElement: 0.36,
+          externalPressure: 0.14,
+          spawnField: 0.08,
+          temporalPressure: 0.12,
+          normalized: true,
+        }),
+      }),
+      relationProfile: fieldRelationProfile,
+      clockReading: clockProfileReading(fieldRelationProfile, session.clock),
+      placement: Object.freeze({
+        candidates: placementCandidates,
+        markers: projectedCell.spawns,
+        history: receipts,
+        selectionRule: 'highest candidate score across resolved cells in each field per tick',
+      }),
+    }),
   });
 }
 
@@ -274,7 +404,13 @@ class SimulationSession {
       score: null,
       transfer: null,
       blocked: null,
+      fieldFit: null,
       relationFit: null,
+      cycleFit: null,
+      phaseFit: null,
+      zoneBase: null,
+      side: null,
+      random: null,
       cycleSeat: null,
       entity: null,
     }));
@@ -294,7 +430,13 @@ class SimulationSession {
       score: null,
       transfer: result.ok ? 1 : null,
       blocked: result.ok ? null : 1,
+      fieldFit: null,
       relationFit: null,
+      cycleFit: null,
+      phaseFit: null,
+      zoneBase: null,
+      side: null,
+      random: null,
       cycleSeat: null,
       entity: null,
     }));
@@ -309,6 +451,7 @@ class SimulationSession {
   snapshot() {
     const active = this.activeWorld;
     const invariants = core.invariants(this.rootWorld);
+    const waveEvidence = nextWaveEvidence(active);
     return Object.freeze({
       projectionVersion: 1,
       mode: 'parity-restoration',
@@ -325,6 +468,7 @@ class SimulationSession {
         finished: Boolean(active.finished),
         digest: core.digestWorld(active),
         fields: Object.freeze(active.fields.map((field) => fieldProjection(active, field))),
+        nextWave: compactWaveProjection(waveEvidence),
         lastEvents: Object.freeze(active.lastEvents.map((event) => Object.freeze({
           zone: event.zone,
           fromCellId: event.from?.id ?? null,
@@ -349,7 +493,12 @@ class SimulationSession {
         path: entry.world.path,
         selected: Object.freeze({ ...entry.selected }),
       }))),
-      selected: selectedProjection(this),
+      selected: selectedProjection(this, waveEvidence),
+      placements: Object.freeze({
+        source: 'm0.5.spawnTick',
+        selectionRule: 'highest candidate score across resolved cells in each field per tick',
+        receipts: placementReceipts(this),
+      }),
       clock: clockProjection(this.clock, this.rootWorld.rotation),
       relationField: relationProjection(this.clock),
       hourglass: playerHourglass(this.hourglass),
