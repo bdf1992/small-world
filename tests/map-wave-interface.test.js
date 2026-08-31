@@ -23,6 +23,17 @@ async function main() {
     assert.strictEqual(snapshot.active.nextWave.fields.length, 3);
 
     const selected = snapshot.selected.cell;
+    const topology = snapshot.selected.mapField.topologyProvenance;
+    assert.strictEqual(topology.source, 'm0.5.ringPoint+voronoi+ringAdjacency+makeField');
+    assert.strictEqual(topology.point.index, 0);
+    assert.strictEqual(topology.point.point.x, selected.point.x);
+    assert.strictEqual(topology.point.point.y, selected.point.y);
+    assert.deepStrictEqual([...topology.neighbors].sort((a,b)=>a-b), [...selected.neighbors].sort((a,b)=>a-b));
+    assert.strictEqual(topology.polygonVertexCount, selected.polygon.length);
+    assert.ok(topology.nucleus, 'default selected root cell must carry initial nucleus provenance');
+    assert.strictEqual(topology.nucleus.cellId, selected.id);
+    assert.strictEqual(topology.nucleus.selectedElement, selected.element);
+
     const selectedWave = snapshot.selected.mapField.nextWave;
     if (selectedWave) {
       assert.strictEqual(selectedWave.readOnly, true);
@@ -53,7 +64,7 @@ async function main() {
     assert.match(inspector, /selectedCollapses/);
     assert.match(inspector, /Step Wave remains the only mutation/);
 
-    console.log('M0.7 live next-wave spatial interface contract: PASS');
+    console.log('M0.7 live map topology + next-wave interface contract: PASS');
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
