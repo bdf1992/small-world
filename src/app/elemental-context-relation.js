@@ -96,11 +96,13 @@ function elementalContextRelation({
   const kernelSignedScore = core.dynamicSignedScore(artifact.shares, map.shares, clock);
 
   return Object.freeze({
-    kind: 'Relation.ElementalContext',
+    kind: 'Virtual<Relation>',
+    relationType: 'ElementalContext',
     version: 1,
     source: 'm0.7.successor.elemental-context-relation',
     readOnly: true,
     authority: 'evidence-only',
+    lifecycle: 'candidate',
     direction: 'artifact->map',
     at: clock.address(),
     side: clock.side ? 'Night' : 'Day',
