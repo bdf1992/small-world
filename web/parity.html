@@ -39,8 +39,8 @@
         </div>
 
         <div class="toolbar" aria-label="World operations">
-          <div class="tool-group"><span>resolve</span><button id="toggle">Play</button><button id="step">Step wave</button><button id="finish">Resolve field</button></div>
-          <div class="tool-group"><span>navigate</span><button id="dive">Dive</button><button id="back">Parent</button></div>
+          <div class="tool-group"><span>resolve</span><button id="toggle">Play</button><button id="step">Step Wave</button><button id="finish">Resolve All</button></div>
+          <div class="tool-group"><span>navigate</span><button id="dive">Dive Into Cell</button><button id="back">Parent</button></div>
           <div class="tool-group projection-tools"><span>project</span><label>view
             <select id="viewMode">
               <option value="element">elements + child preview</option>
@@ -78,18 +78,18 @@
             <div class="panel-heading"><div><p class="eyebrow">Clock → Face</p><h2>Clock</h2></div><button class="inspect-link" type="button" data-inspect="clock">inspect</button></div>
             <canvas id="clock" width="300" height="300"></canvas>
             <div id="clockReadout" class="mono"></div>
-            <div class="actions instrument-actions"><button id="tick">Cross tick</button><button id="flipClock">Flip</button></div>
+            <div class="actions instrument-actions"><button id="tick">Cross Tick + Resolve Time</button><button id="flipClock">Flip Day/Night</button></div>
           </section>
 
           <section class="panel side-panel sw-frame instrument-card" data-sw-domain="instrument">
-            <div class="panel-heading"><div><p class="eyebrow">Hourglass → Grain / Neck</p><h2>Hourglass</h2></div><button class="inspect-link" type="button" data-inspect="hourglass">inspect</button></div>
+            <div class="panel-heading"><div><p class="eyebrow">Hourglass → Grain / Neck</p><h2>Player hourglass</h2></div><button class="inspect-link" type="button" data-inspect="hourglass">inspect</button></div>
             <div id="hourglass"></div>
             <div class="actions"><button id="spend">Spend selected</button><button id="flipGlass">Flip</button></div>
           </section>
         </div>
 
         <details class="panel side-panel drawer context-drawer sw-frame" data-sw-domain="resolution" open>
-          <summary><span>Spawn / relation context</span><span class="tag">current possibility</span></summary>
+          <summary><span>Spawn proposition · relation context</span><span class="tag">current possibility</span></summary>
           <div class="drawer-body"><div id="spawnExplain" class="small"></div></div>
         </details>
 
