@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const {
   ELEMENTS,
+  artifactDefinition,
   ARTIFACT_TYPES,
   CARD_ARTIFACT,
   createArtifactCard,
@@ -27,6 +28,8 @@ function main() {
   assert.strictEqual(CARD_ARTIFACT.id, 'Card.Artifact');
   assert.strictEqual(CARD_ARTIFACT.grammar, 'Artifact');
   assert.deepStrictEqual(CARD_ARTIFACT.fixed, {});
+  assert.deepStrictEqual(artifactDefinition.dimensions.elements, { kind: 'Element', count: '1..8' });
+  assert.deepStrictEqual(artifactDefinition.dimensions.attributes, { kind: 'Attribute', count: '0..N' });
 
   assert.ok(ARTIFACT_TYPES['Artifact.Persona']);
   assert.strictEqual(ARTIFACT_TYPES['Artifact.Persona'].parent, 'Artifact');
@@ -110,7 +113,7 @@ function main() {
 
   console.log(JSON.stringify({
     pass: true,
-    invariant: 'Card.Artifact generates Artifact; Artifact kinds come from admitted relations, not matching Cards',
+    invariant: 'Card.Artifact generates Artifact; Element is distinct from Attribute; Artifact kinds come from admitted relations, not matching Cards',
     universalShape: ['Elements', 'Attributes', 'Properties', 'Stats'],
     card: CARD_ARTIFACT.id,
     admittedKinds: ARTIFACT_KIND_IDS,
