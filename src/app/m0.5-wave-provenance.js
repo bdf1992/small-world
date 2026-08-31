@@ -4,7 +4,7 @@ const core = require('../kernel/m0.5');
 
 const ELEMENTS = Object.freeze([...core.E]);
 const RELATIONS = Object.freeze([...core.R]);
-const SUPPORT = Object.freeze([.18, 1.28, 1.10, .82, .42, .72, .95, 1.18]);
+const SUPPORT = Object.freeze([1.16, 1.34, 1.20, .98, .62, .80, 1.05, 1.18]);
 
 const WAVE_CONTRACT = Object.freeze({
   source: 'm0.5.propagateElement+frontierCells+collapseOne+generationWave',
