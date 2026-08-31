@@ -57,7 +57,7 @@ function placementReceipts(session) {
       random: event.random,
       cycleSeat: event.cycleSeat,
       entity: event.entity,
-    }))));
+    })));
 }
 
 function temporalSubject(subject) {
