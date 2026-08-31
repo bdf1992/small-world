@@ -3,6 +3,7 @@
 const core = require('../kernel/m0.5');
 const { overlayElementalProfile } = require('../model/elemental-profile');
 const { clockProjection, clockProfileReading } = require('./elemental-clock-context');
+const { fieldPriorContract, cellPriorProvenance } = require('./m0.5-map-provenance');
 const { resolveWorld } = require('./world');
 
 const ELEMENTS = Object.freeze([...core.E]);
@@ -150,6 +151,7 @@ function fieldProjection(world, field) {
     done: Boolean(field.done),
     step: field.step,
     nuclei: Object.freeze(field.nuclei.map((cell) => cell.id)),
+    priorContract: fieldPriorContract(field),
     cells: Object.freeze(field.cells.map((cell) => cellProjection(world, field, cell))),
   });
 }
@@ -203,6 +205,7 @@ function selectedProjection(session) {
   const fieldRelationProfile = overlayElementalProfile(effectiveField);
   const supply = cell.resolved ? core.temporalSupply(session.activeWorld, session.clock, cell) : null;
   const placementCandidates = spawnProjection(session.activeWorld, session.clock, cell);
+  const priorProvenance = cellPriorProvenance(session.activeWorld, field, cell);
   const receipts = session.activeWorld === session.rootWorld
     ? placementReceipts(session).filter((receipt) => receipt.zone === cell.zone && receipt.cellId === cell.id)
     : Object.freeze([]);
@@ -225,6 +228,8 @@ function selectedProjection(session) {
       spawnField: projectedCell.spawnField,
       temporalPressure: projectedCell.temporalPressure,
       effectiveField,
+      priorContract: fieldPriorContract(field),
+      priorProvenance,
       effectiveFieldComposition: Object.freeze({
         unresolved: 'probability',
         resolved: Object.freeze({
