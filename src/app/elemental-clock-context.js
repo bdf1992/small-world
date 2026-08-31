@@ -56,7 +56,6 @@ function clockProfileReading(profile, clock) {
     at: clock.address(),
     side: clock.side ? 'Night' : 'Day',
     orientation: clock.side ? 'CCW' : 'CW',
-    phase: clock.phase(1),
     byTarget: Object.freeze(byTarget),
   });
 }
