@@ -24,6 +24,7 @@ async function request(action = '', params = {}) {
 
 function vectorArray(vector) { return state.elements.map((name) => Number(vector?.[name] ?? 0)); }
 function argmax(values) { let best = 0; for (let i=1;i<values.length;i++) if (values[i] > values[best]) best = i; return best; }
+function argmaxAbs(values) { let best = 0; for (let i=1;i<values.length;i++) if (Math.abs(values[i]) > Math.abs(values[best])) best = i; return best; }
 function rootColor(root) { let h = 0; for (const ch of String(root ?? 'none')) h = ((h << 5) - h + ch.charCodeAt(0)) | 0; return `hsl(${Math.abs(h)%360} 58% 58%)`; }
 function mixHex(hex, k) { const n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255,q=v=>Math.round(v*k+10*(1-k));return `rgb(${q(r)},${q(g)},${q(b)})`; }
 function pointInPoly(p, poly) { let inside=false; for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a.y>p.y)!==(b.y>p.y))&&(p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y+1e-30)+a.x))inside=!inside;}return inside; }
@@ -61,14 +62,32 @@ function cellFill(cell, mode) {
     const certainty = 1 - Math.min(1, Number(cell.entropy || 0) / Math.log(8));
     const v=Math.round(18+certainty*180);return `rgb(${v},${Math.round(v*.86)},${Math.round(v*1.05)})`;
   }
+  if (mode === 'noise') {
+    const p = vectorArray(cell.noise), e=argmaxAbs(p), strength=Math.min(1,Math.abs(p[e]));
+    return mixHex(COLORS[e], .22 + .66*strength);
+  }
+  if (mode === 'prior') {
+    const p = vectorArray(cell.prior), e=argmax(p);
+    return mixHex(COLORS[e], .24 + .66*Math.min(1,p[e]));
+  }
   if (mode === 'pressure') {
     const p = vectorArray(cell.externalPressure), e=argmax(p); return mixHex(COLORS[e], .28 + .62*Math.min(1,p[e]));
+  }
+  if (mode === 'spawn') {
+    const p = vectorArray(cell.spawnField), total=sum(p);if(!total)return '#0c0a0f';const e=argmax(p);return mixHex(COLORS[e],.24+.68*Math.min(1,total));
   }
   if (mode === 'time') {
     const p = vectorArray(cell.temporalPressure), total=sum(p);if(!total)return '#0c0a0f';const e=argmax(p);return mixHex(COLORS[e],.25+.70*Math.min(1,total/3));
   }
+  if (mode === 'field') {
+    const p = vectorArray(cell.fieldVector), e=argmax(p);return mixHex(COLORS[e],.28+.64*Math.min(1,p[e]));
+  }
   if (cell.resolved) return mixHex(COLORS[cell.elementIndex], .76);
   const dom=argmax(probability), certainty=1-Math.min(1,Number(cell.entropy||0)/Math.log(8));return mixHex(COLORS[dom],.12+.35*certainty);
+}
+
+function placementGlyph(type) {
+  return { POI:'⌂', Artifact:'◇', Persona:'●', Event:'✦' }[type] ?? '✦';
 }
 
 function drawWorld() {
@@ -80,13 +99,19 @@ function drawWorld() {
     ctx.save();ringClip(ctx,canvas,field);const frontier=frontiers[fieldIndex];
     for(const cell of field.cells){
       pathPoly(ctx,canvas,cell.polygon);ctx.fillStyle=cellFill(cell,mode);ctx.fill();
-      ctx.save();pathPoly(ctx,canvas,cell.polygon);ctx.clip();ctx.globalAlpha=.38;
-      for(const dot of cell.preview){const p=w2c(canvas,dot.point);ctx.beginPath();ctx.arc(p.x,p.y,2.4,0,Math.PI*2);ctx.fillStyle=COLORS[dot.elementIndex];ctx.fill();}
-      ctx.restore();
+      if(mode==='element'){
+        ctx.save();pathPoly(ctx,canvas,cell.polygon);ctx.clip();ctx.globalAlpha=.38;
+        for(const dot of cell.preview){const p=w2c(canvas,dot.point);ctx.beginPath();ctx.arc(p.x,p.y,2.4,0,Math.PI*2);ctx.fillStyle=COLORS[dot.elementIndex];ctx.fill();}
+        ctx.restore();
+      }
       pathPoly(ctx,canvas,cell.polygon);ctx.lineWidth=selected&&selected.zone===cell.zone&&selected.id===cell.id?4:cell.nucleus?2.7:frontier.has(cell.id)?1.5:.75;
       ctx.strokeStyle=selected&&selected.zone===cell.zone&&selected.id===cell.id?'#fff0bd':cell.nucleus?'#e5bd6f':frontier.has(cell.id)?'#76657f':'#251e2b';ctx.stroke();
       if(cell.collision){const p=w2c(canvas,cell.point);ctx.strokeStyle='#c3b1ef';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(p.x-4,p.y-4);ctx.lineTo(p.x+4,p.y+4);ctx.moveTo(p.x+4,p.y-4);ctx.lineTo(p.x-4,p.y+4);ctx.stroke();}
-      if(cell.spawns.length){const p=w2c(canvas,cell.point);ctx.beginPath();ctx.arc(p.x,p.y,4+Math.min(4,cell.spawns.length),0,Math.PI*2);ctx.fillStyle='#f4e2b3';ctx.fill();}
+      if(cell.spawns.length){
+        const p=w2c(canvas,cell.point),latest=cell.spawns[cell.spawns.length-1];
+        ctx.beginPath();ctx.arc(p.x,p.y,4+Math.min(4,cell.spawns.length),0,Math.PI*2);ctx.fillStyle='#f4e2b3';ctx.fill();
+        ctx.fillStyle='#f4e2b3';ctx.font='600 12px ui-monospace';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(placementGlyph(latest.type),p.x+8,p.y-8);
+      }
     }
     for(const id of field.nuclei){const cell=cellBy(field,id);if(!cell)continue;const p=w2c(canvas,cell.point);ctx.beginPath();ctx.arc(p.x,p.y,8,0,Math.PI*2);ctx.strokeStyle='#f1cc7e';ctx.lineWidth=2;ctx.stroke();}
     ctx.restore();
@@ -106,7 +131,7 @@ function drawClock() {
   $('clockReadout').textContent=`cycle ${clock.cycle} · tick ${clock.tick}/60 · position ${clock.position}:${clock.tickInPosition} · address ${clock.address} · phase ${clock.phase.toFixed(2)}`;
 }
 
-function renderLegend(){ $('legend').innerHTML=state.elements.map((e,i)=>`<span><i class="sw" style="background:${COLORS[i]}"></i>${e}</span>`).join('')+'<span>·</span><span style="color:#e5bd6f">○ nucleus</span><span style="color:#7a6a85">□ frontier</span><span style="color:#c3b1ef">× collision</span><span>· ✦ spawn</span>'; }
+function renderLegend(){ $('legend').innerHTML=state.elements.map((e,i)=>`<span><i class="sw" style="background:${COLORS[i]}"></i>${e}</span>`).join('')+'<span>·</span><span style="color:#e5bd6f">○ nucleus</span><span style="color:#7a6a85">□ frontier</span><span style="color:#c3b1ef">× collision</span><span>· ⌂ POI · ◇ Artifact · ● Persona · ✦ Event</span>'; }
 
 function renderCrumb(){const bits=['World',...state.stack.map((entry)=>`#${entry.selected.id}`)];if(state.active.depth)bits.push(`#${state.active.parentCellId}`);$('crumb').innerHTML=`<b>${DEPTH_NAMES[Math.min(state.active.depth,DEPTH_NAMES.length-1)]}</b> · ${bits.join(' › ')} · active seed <span class="mono">${state.active.seed}</span>`;}
 
@@ -129,7 +154,10 @@ function selectedMapFieldDisclosure(selected){
   const formula=selected.cell.resolved
     ? `${Math.round(composition.prior*100)}% prior + ${Math.round(composition.resolvedElement*100)}% resolved + ${Math.round(composition.externalPressure*100)}% pressure + ${Math.round(composition.spawnField*100)}% spawn + ${Math.round(composition.temporalPressure*100)}% temporal → normalized`
     : 'unresolved cell: effective field is the current probability field';
-  return `<details class="selected-profile-disclosure"><summary><span>Map field evidence</span><span class="tag">noise · prior · placement</span></summary><div class="profile-disclosure-body"><div class="small">Source <span class="mono">${escapeHtml(map.source)}</span>. This is the map cell's measured elemental field, <b>not an Artifact Elemental Identity</b>.</div><div class="small" style="margin-top:7px"><b>Coherent noise</b> ${topSignedVector(map.noise)}<br><b>Smoothed prior</b> ${topVector(map.prior)}<br><b>External/radial pressure</b> ${topVector(map.externalPressure)}<br><b>Spawn influence</b> ${sum(Object.values(map.spawnField))?topVector(map.spawnField):'none yet'}<br><b>Temporal pressure</b> ${sum(Object.values(map.temporalPressure))?topVector(map.temporalPressure):'none yet'}<br><b>Effective local field</b> ${topVector(map.effectiveField)}</div><div class="small" style="margin-top:7px"><b>Field construction</b><br>${escapeHtml(formula)}</div><div class="profile-clock-read"><b>Relation reading of the effective field</b><br>${escapeHtml(map.clockReading.side)} / ${escapeHtml(map.clockReading.orientation)} @ <span class="mono">${escapeHtml(map.clockReading.at)}</span><br>strongest contextual target <b>${escapeHtml(strongest.target)} ${strongest.score.toFixed(3)}</b><br>weakest <b>${escapeHtml(weakest.target)} ${weakest.score.toFixed(3)}</b></div><div class="small" style="margin-top:7px"><b>Placement history</b> ${map.placement.history.length} realized spawn${map.placement.history.length===1?'':'s'} at this address.<br>Current placement candidates and their score decomposition are shown in Spawn proposition below.</div></div></details>`;
+  const placementHistory=map.placement.history.length
+    ? map.placement.history.slice(-4).map((item)=>`${escapeHtml(item.type)} @ ${escapeHtml(item.at)}`).join(' · ')
+    : 'none yet';
+  return `<details class="selected-profile-disclosure"><summary><span>Map field evidence</span><span class="tag">noise · prior · placement</span></summary><div class="profile-disclosure-body"><div class="small">Source <span class="mono">${escapeHtml(map.source)}</span>. This is the map cell's measured elemental field, <b>not an Artifact Elemental Identity</b>.</div><div class="small" style="margin-top:7px"><b>Coherent noise</b> ${topSignedVector(map.noise)}<br><b>Smoothed prior</b> ${topVector(map.prior)}<br><b>External/radial pressure</b> ${topVector(map.externalPressure)}<br><b>Spawn influence</b> ${sum(Object.values(map.spawnField))?topVector(map.spawnField):'none yet'}<br><b>Temporal pressure</b> ${sum(Object.values(map.temporalPressure))?topVector(map.temporalPressure):'none yet'}<br><b>Effective local field</b> ${topVector(map.effectiveField)}</div><div class="small" style="margin-top:7px"><b>Field construction</b><br>${escapeHtml(formula)}</div><div class="profile-clock-read"><b>Relation reading of the effective field</b><br>${escapeHtml(map.clockReading.side)} / ${escapeHtml(map.clockReading.orientation)} @ <span class="mono">${escapeHtml(map.clockReading.at)}</span><br>strongest contextual target <b>${escapeHtml(strongest.target)} ${strongest.score.toFixed(3)}</b><br>weakest <b>${escapeHtml(weakest.target)} ${weakest.score.toFixed(3)}</b></div><div class="small" style="margin-top:7px"><b>Placement history</b> ${map.placement.history.length} realized spawn${map.placement.history.length===1?'':'s'} at this address.<br>${placementHistory}<br>Current placement candidates and their score decomposition are shown in Spawn proposition below.</div></div></details>`;
 }
 
 function renderSelected(){const selected=state.selected;if(!selected){$('selected').innerHTML='Select a visible cell.';return;}const c=selected.cell;$('selected').innerHTML=`<div class="selected-title">${c.zoneName} · cell #${c.id}</div><div class="small">${c.nucleus?'<span class="tag nucleus">nucleus</span>':''}${c.collision?'<span class="tag collision">front collision</span>':''}${c.resolved?`resolved ${c.element}`:`unresolved · H ${c.entropy.toFixed(3)}`} · neighbors ${c.neighbors.length}<br>root ${escapeHtml(c.root??'—')} · collapse wave ${c.collapseWave??'—'}</div><div class="metric-grid"><div class="metric">initial entropy<b>${Number(c.initialEntropy).toFixed(3)}</b></div><div class="metric">current entropy<b>${Number(c.entropy).toFixed(3)}</b></div></div>${vectorBars(c.probability)}${selectedMapFieldDisclosure(selected)}<div class="small" style="margin-top:7px"><b>Cyclic seat</b> ${Number(c.cyclicSeat??0).toFixed(2)}<br><b>Static pressure</b> ${topVector(c.externalPressure)}<br><b>Temporal pressure</b> ${c.temporalPressureTotal?topVector(c.temporalPressure):'none'}<br><b>Support updates</b> ${c.supportHits}<br><b>Roots touched</b> ${c.rootsTouched.length?c.rootsTouched.map(escapeHtml).join(' · '):'none yet'}<br><b>Visible recursion</b> ${c.preview.length} deterministic child samples; Dive materializes the conditioned graph.</div>`;}
