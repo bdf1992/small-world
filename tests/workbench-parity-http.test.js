@@ -15,6 +15,12 @@ function assertPlacementCandidate(candidate) {
   }
 }
 
+function assertVectorClose(actual, expected, message) {
+  for (const key of Object.keys(expected)) {
+    assert.ok(Math.abs(actual[key] - expected[key]) < 1e-12, `${message}: ${key}`);
+  }
+}
+
 async function main() {
   const server = createWorkbenchServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -56,8 +62,27 @@ async function main() {
     assert.strictEqual(snapshot.placements.source, 'm0.5.spawnTick');
     assert.deepStrictEqual(snapshot.placements.receipts, []);
 
+    for (const field of snapshot.active.fields) {
+      const contract = field.priorContract;
+      assert.strictEqual(contract.source, 'm0.5.initialProb+smoothNoiseField');
+      assert.strictEqual(Object.keys(contract.zonePrior).length, 8, 'zone prior must remain typed field evidence');
+      assert.deepStrictEqual(
+        [contract.logitWeights.zonePrior, contract.logitWeights.logExternalPressure, contract.logitWeights.coherentNoise, contract.logitWeights.pressureFloor],
+        [.58, .72, .88, 1e-5],
+        'M0.5 prior logit weights must remain explicit',
+      );
+      assert.deepStrictEqual(
+        [contract.smoothing.passes, contract.smoothing.alpha, contract.smoothing.selfWeight, contract.smoothing.neighborMeanWeight],
+        [2, .24, .76, .24],
+        'adjacency smoothing contract must remain explicit',
+      );
+      assert.strictEqual(contract.noise.octaves, 4);
+      assert.strictEqual(contract.noise.amplitudeDecay, .52);
+      assert.strictEqual(contract.pressure.source, 'm0.5.pressureFor');
+    }
+
     for (const cell of snapshot.active.fields.flatMap((field) => field.cells)) {
-      assert.strictEqual(Object.keys(cell.noise).length, 8, 'coherent map noise must remain projected');
+      assert.strictEqual(Object.keys(cell.noise).length, 8, 'smoothed coherent map noise must remain projected');
       assert.strictEqual(Object.keys(cell.prior).length, 8, 'smoothed initial prior must remain projected');
       assert.strictEqual(Object.keys(cell.externalPressure).length, 8, 'spatial pressure must remain projected');
       assert.ok(Number.isFinite(cell.initialEntropy), 'initial entropy remains a map statistic');
@@ -73,6 +98,18 @@ async function main() {
     assert.ok(Number.isFinite(snapshot.clock.phase), 'Clock projection owns world-relative phase');
     assert.strictEqual(Object.prototype.hasOwnProperty.call(snapshot.selected.mapField.clockReading, 'phase'), false, 'context reading must not duplicate Clock phase with a different rotation frame');
     assert.strictEqual(Object.prototype.hasOwnProperty.call(snapshot.selected, 'elemental'), false, 'map field must not masquerade as Artifact Elemental Identity');
+
+    const priorEvidence = snapshot.selected.mapField.priorProvenance;
+    assert.strictEqual(priorEvidence.source, 'm0.5.initialProb+smoothNoiseField');
+    assert.strictEqual(priorEvidence.seed, snapshot.active.seed);
+    assert.strictEqual(Object.keys(priorEvidence.coherentNoiseRaw).length, 8);
+    assert.strictEqual(Object.keys(priorEvidence.coherentNoiseSmoothed).length, 8);
+    assert.strictEqual(Object.keys(priorEvidence.preSmoothingLogits).length, 8);
+    assert.strictEqual(Object.keys(priorEvidence.preSmoothingPrior).length, 8);
+    assert.strictEqual(Object.keys(priorEvidence.finalLogits).length, 8);
+    assertVectorClose(priorEvidence.coherentNoiseSmoothed, snapshot.selected.cell.noise, 'smoothed noise provenance must match cell state');
+    assertVectorClose(priorEvidence.finalPrior, snapshot.selected.cell.prior, 'replayed final prior must match cell state');
+    assert.ok(Math.abs(priorEvidence.finalPriorEntropy - snapshot.selected.cell.initialEntropy) < 1e-12, 'replayed final prior entropy must match M0.5 cell statistic');
 
     const firstDigest = snapshot.active.digest;
     snapshot = await json(`${base}/api/simulation/step`, { method: 'POST' });
@@ -134,11 +171,13 @@ async function main() {
     assert.strictEqual(snapshot.stack.length, 1);
     assert.ok(snapshot.selected.mapField.relationProfile.contributions.length >= 1);
     assert.strictEqual(Object.keys(snapshot.selected.mapField.noise).length, 8);
+    assert.strictEqual(snapshot.selected.mapField.priorProvenance.seed, snapshot.active.seed, 'recursive field provenance must replay from the child-world seed');
+    assert.strictEqual(snapshot.selected.mapField.priorContract.local, true, 'recursive field must expose the local pressure contract');
     assert.ok(snapshot.placements.receipts.length >= 1, 'root placement receipts remain inspectable while recursively focused');
     snapshot = await json(`${base}/api/simulation/back`, { method: 'POST' });
     assert.strictEqual(snapshot.active.depth, 0);
 
-    console.log('M0.6 parity workbench + M0.7 map-state/placement evidence HTTP contract: PASS');
+    console.log('M0.6 parity workbench + M0.7 map-state/placement/prior provenance HTTP contract: PASS');
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
