@@ -28,13 +28,20 @@ async function main() {
     const inspectorJs = await fetch(`${base}/inspector.js`);
     assert.strictEqual(parityJs.status, 200);
     assert.strictEqual(inspectorJs.status, 200);
-    assert.match(await parityJs.text(), /api\/simulation/);
+    const paritySource = await parityJs.text();
+    assert.match(paritySource, /api\/simulation/);
+    assert.match(paritySource, /M0\.7 elemental Profile/);
+    assert.match(paritySource, /open full Profile \+ Crossing instrument/);
     assert.match(await inspectorJs.text(), /Surface|surface/);
 
     let snapshot = await json(`${base}/api/simulation`);
     assert.strictEqual(snapshot.active.fields.length, 3);
     assert.strictEqual(snapshot.active.fields.flatMap((field) => field.cells).length, 72);
     assert.strictEqual(snapshot.generative.map.regions.length, 3);
+    assert.strictEqual(snapshot.selected.elemental.source, 'selected.cell.fieldVector');
+    assert.deepStrictEqual(snapshot.selected.elemental.profile.ring, snapshot.elements);
+    assert.ok(snapshot.selected.elemental.profile.contributions.length >= 1);
+    assert.strictEqual(snapshot.selected.elemental.clockReading.at, snapshot.clock.address);
 
     const firstDigest = snapshot.active.digest;
     snapshot = await json(`${base}/api/simulation/step`, { method: 'POST' });
@@ -47,23 +54,31 @@ async function main() {
     snapshot = await json(`${base}/api/simulation/select?zone=${first.zone}&id=${first.id}`, { method: 'POST' });
     assert.strictEqual(snapshot.selected.cell.id, first.id);
     assert.strictEqual(snapshot.selected.spawnCandidates.length, 4);
+    assert.strictEqual(snapshot.selected.elemental.source, 'selected.cell.fieldVector');
+    assert.ok(Object.values(snapshot.selected.elemental.composition).some((value) => value > 0));
+    assert.strictEqual(snapshot.selected.elemental.clockReading.orientation, snapshot.clock.orientation);
 
     const beforeSide = snapshot.clock.side;
+    const beforeReading = snapshot.selected.elemental.clockReading.byTarget.Fire.score;
     snapshot = await json(`${base}/api/simulation/flip-clock`, { method: 'POST' });
     assert.notStrictEqual(snapshot.clock.side, beforeSide);
+    assert.strictEqual(snapshot.selected.elemental.clockReading.orientation, snapshot.clock.orientation);
+    assert.notStrictEqual(snapshot.selected.elemental.clockReading.byTarget.Fire.score, beforeReading);
 
     const beforeTick = snapshot.clock.tick;
     snapshot = await json(`${base}/api/simulation/advance`, { method: 'POST' });
     assert.strictEqual(snapshot.clock.tick, beforeTick + 1);
     assert.ok(snapshot.selected.cell.biomeTime, 'Cross Tick must expose selected biome hourglass through HTTP projection');
+    assert.strictEqual(snapshot.selected.elemental.clockReading.at, snapshot.clock.address);
 
     snapshot = await json(`${base}/api/simulation/dive`, { method: 'POST' });
     assert.strictEqual(snapshot.active.depth, 1);
     assert.strictEqual(snapshot.stack.length, 1);
+    assert.ok(snapshot.selected.elemental.profile.contributions.length >= 1);
     snapshot = await json(`${base}/api/simulation/back`, { method: 'POST' });
     assert.strictEqual(snapshot.active.depth, 0);
 
-    console.log('M0.6 parity workbench HTTP contract: PASS');
+    console.log('M0.6 parity workbench + M0.7 selected Profile disclosure HTTP contract: PASS');
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
