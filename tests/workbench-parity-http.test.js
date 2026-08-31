@@ -19,13 +19,14 @@ async function main() {
     assert.strictEqual(htmlResponse.status, 200);
     const html = await htmlResponse.text();
     for (const phrase of [
-      'Step Wave', 'Resolve All', 'Dive Into Cell', 'Cross next Tick',
-      'Flip Day/Night', 'Clock → Face', 'Hourglass → Artifact',
+      'Step Wave', 'Resolve All', 'Dive Into Cell', 'Cross Tick + Resolve Time',
+      'Flip Day/Night', 'Clock → Face', 'Hourglass → Grain / Neck',
       'Spawn proposition', 'Temporal transfer', 'Player hourglass',
       'Generative overlay', 'One object grammar',
     ]) assert.match(html, new RegExp(phrase.replace(/[+]/g, '\\+')));
     assert.ok(html.indexOf('id="tick"') > html.indexOf('id="clock"'), 'time crossing control should live with the Clock instrument');
     assert.ok(html.indexOf('id="spend"') > html.indexOf('id="hourglass"'), 'grain control should live with the Hourglass instrument');
+    assert.doesNotMatch(html, /Hourglass → Artifact/, 'UI must not claim Artifact binding before the player Hourglass has a runtime binding');
 
     const parityJs = await fetch(`${base}/parity.js`);
     const inspectorJs = await fetch(`${base}/inspector.js`);
@@ -45,6 +46,8 @@ async function main() {
     assert.deepStrictEqual(snapshot.selected.elemental.profile.ring, snapshot.elements);
     assert.ok(snapshot.selected.elemental.profile.contributions.length >= 1);
     assert.strictEqual(snapshot.selected.elemental.clockReading.at, snapshot.clock.address);
+    assert.ok(Number.isFinite(snapshot.clock.phase), 'Clock projection owns world-relative phase');
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(snapshot.selected.elemental.clockReading, 'phase'), false, 'context reading must not duplicate Clock phase with a different rotation frame');
 
     const firstDigest = snapshot.active.digest;
     snapshot = await json(`${base}/api/simulation/step`, { method: 'POST' });
