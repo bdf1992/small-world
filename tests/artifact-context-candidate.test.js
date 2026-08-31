@@ -29,7 +29,9 @@ for (const seed of [1, 42, 93208, 99991]) {
     assert.match(candidate.address, new RegExp(`^${world.path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/zone:${field.zone}/cell:${cell.id}$`));
 
     const relation = candidate.relation;
-    assert.strictEqual(relation.kind, 'Relation.ElementalContext');
+    assert.strictEqual(relation.kind, 'Virtual<Relation>');
+    assert.strictEqual(relation.relationType, 'ElementalContext');
+    assert.strictEqual(relation.lifecycle, 'candidate');
     assert.strictEqual(relation.direction, 'artifact->map');
     assert.strictEqual(relation.authority, 'evidence-only');
     assert.strictEqual(relation.artifact.stage, 'virtual');
@@ -78,8 +80,10 @@ assert.strictEqual(artifactContextCandidate(unresolvedWorld, new core.Clock(), u
 
 console.log(JSON.stringify({
   pass: true,
-  bridge: 'M0.5 Artifact field overlap -> Relation.ElementalContext',
+  bridge: 'M0.5 Artifact field overlap -> Virtual<Relation>.ElementalContext',
   stage: dayCandidate.stage,
+  relationKind: dayCandidate.relation.kind,
+  relationType: dayCandidate.relation.relationType,
   admission: dayCandidate.admission,
   realizedArtifact: dayCandidate.realizedArtifact,
   fieldOverlap: dayCandidate.placement.fieldOverlap,
