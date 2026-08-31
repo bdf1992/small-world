@@ -20,7 +20,7 @@ const artifactDefinition = createDefinition({
   grammar: 'Artifact',
   sections: GENERIC_CONTRACT,
   dimensions: {
-    elements: { kind: 'Attribute', count: '1..8' },
+    elements: { kind: 'Element', count: '1..8' },
     attributes: { kind: 'Attribute', count: '0..N' },
     properties: { kind: 'Property', count: '0..N' },
     stats: { kind: 'Stat', count: '0..N' },
@@ -78,7 +78,10 @@ function createArtifactCard(spec = {}) {
 
 const CARD_ARTIFACT = createArtifactCard();
 
-function elementalProfile(input = {}) {
+// These are selection priors for unresolved elemental participation. They are
+// not the resolved elemental Profile, which is the weighted overlay implemented
+// by model/elemental-profile.js.
+function elementPossibilityWeights(input = {}) {
   const supplied = Object.fromEntries(ELEMENTS.map((element) => [element, Number(input[element] ?? 0)]));
   if (Object.values(supplied).some((value) => value > 0)) return normalize(supplied);
   return normalize(Object.fromEntries(ELEMENTS.map((element) => [element, 1])));
@@ -95,7 +98,7 @@ function virtualizeArtifact(card, reference, { elements = {} } = {}) {
       attributeCount: clone(card.priors.attributeCount),
       propertyCount: clone(card.priors.propertyCount),
       statCount: clone(card.priors.statCount),
-      elements: elementalProfile(elements),
+      elements: elementPossibilityWeights(elements),
     },
     lineage: [
       { stage: 'definition', id: card.definitionId },
@@ -172,7 +175,7 @@ module.exports = {
   ARTIFACT_TYPES,
   CARD_ARTIFACT,
   createArtifactCard,
-  elementalProfile,
+  elementPossibilityWeights,
   virtualizeArtifact,
   realizeArtifact,
   resolveArtifactCard,
