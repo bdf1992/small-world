@@ -1,6 +1,8 @@
 'use strict';
 
 const core = require('../kernel/m0.5');
+const { overlayElementalProfile } = require('../model/elemental-profile');
+const { clockProjection, clockProfileReading } = require('./elemental-clock-context');
 const { resolveWorld } = require('./world');
 
 const ELEMENTS = Object.freeze([...core.E]);
@@ -118,19 +120,6 @@ function fieldProjection(world, field) {
   });
 }
 
-function clockProjection(clock, rotation) {
-  return Object.freeze({
-    cycle: clock.cycle,
-    tick: clock.tick,
-    side: clock.side ? 'Night' : 'Day',
-    orientation: clock.side ? 'CCW' : 'CW',
-    position: clock.position,
-    tickInPosition: clock.tickInPosition,
-    address: clock.address(),
-    phase: clock.phase(rotation),
-  });
-}
-
 function spawnProjection(world, clock, cell) {
   if (!cell?.resolved) return Object.freeze([]);
   return Object.freeze(core.candidateScores(world, clock, cell).map((candidate) => Object.freeze({
@@ -175,11 +164,19 @@ function selectedProjection(session) {
   const located = session.locateSelected();
   if (!located) return null;
   const { field, cell } = located;
+  const fieldVector = vectorObject(core.fieldVector(cell));
+  const elementalProfile = overlayElementalProfile(fieldVector);
   const supply = cell.resolved ? core.temporalSupply(session.activeWorld, session.clock, cell) : null;
   return Object.freeze({
     cell: cellProjection(session.activeWorld, field, cell),
     temporalSupply: supply ? vectorObject(supply) : null,
     spawnCandidates: spawnProjection(session.activeWorld, session.clock, cell),
+    elemental: Object.freeze({
+      source: 'selected.cell.fieldVector',
+      composition: fieldVector,
+      profile: elementalProfile,
+      clockReading: clockProfileReading(elementalProfile, session.clock),
+    }),
   });
 }
 
