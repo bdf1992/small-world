@@ -12,6 +12,7 @@ const {
   placementContract,
   replayPlacementCandidate,
 } = require('../src/app/m0.5-placement-provenance');
+const { artifactContextCandidate } = require('../src/app/artifact-context-candidate');
 
 const WEB_ROOT = path.join(__dirname, '..', 'web');
 
@@ -99,6 +100,14 @@ function placementEvidence(session) {
       type,
     ))
     : [];
+  const artifactContext = located?.cell?.resolved
+    ? artifactContextCandidate(
+      session.activeWorld,
+      session.clock,
+      located.field,
+      located.cell,
+    )
+    : null;
   return Object.freeze({
     source: 'm0.5.scoreSpawn+spawnTick',
     readOnly: true,
@@ -107,6 +116,7 @@ function placementEvidence(session) {
       : null,
     contract: placementContract(),
     selected: Object.freeze(selected),
+    artifactContext,
   });
 }
 
