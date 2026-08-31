@@ -31,7 +31,7 @@ function artifactContextCandidate(world, clock, field, cell) {
       type: placement.type,
       at: placement.at,
       score: placement.score,
-      fieldFit: placement.fieldFit,
+      fieldFit: placement.terms.field.contribution,
       fieldOverlap: placement.terms.field.raw,
       fieldWeight: placement.terms.field.weight,
       rotatedSignature: placement.rotatedSignature,
