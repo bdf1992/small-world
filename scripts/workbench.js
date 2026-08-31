@@ -7,6 +7,11 @@ const { resolveWorld, DEFAULTS } = require('../src/app/world');
 const { createSimulationSession } = require('../src/app/simulation');
 const { createResolutionAuthoringSession } = require('../src/app/resolution-session');
 const { createElementalProfileProbe } = require('../src/app/elemental-profile-probe');
+const {
+  TYPES: PLACEMENT_TYPES,
+  placementContract,
+  replayPlacementCandidate,
+} = require('../src/app/m0.5-placement-provenance');
 
 const WEB_ROOT = path.join(__dirname, '..', 'web');
 
@@ -81,6 +86,28 @@ function applySimulationAction(session, url) {
   if (action === 'flip-hourglass') return session.flipHourglass();
   if (action === 'select') return session.select({ zone: integerParam(url.searchParams, 'zone', -1), id: integerParam(url.searchParams, 'id', -1) });
   throw new Error(`unknown simulation action: ${action}`);
+}
+
+function placementEvidence(session) {
+  const located = session.locateSelected();
+  const selected = located?.cell?.resolved
+    ? PLACEMENT_TYPES.map((type) => replayPlacementCandidate(
+      session.activeWorld,
+      session.clock,
+      located.field,
+      located.cell,
+      type,
+    ))
+    : [];
+  return Object.freeze({
+    source: 'm0.5.scoreSpawn+spawnTick',
+    readOnly: true,
+    selectedAddress: located
+      ? `${session.activeWorld.path}/zone:${located.field.zone}/cell:${located.cell.id}`
+      : null,
+    contract: placementContract(),
+    selected: Object.freeze(selected),
+  });
 }
 
 function applyProfileAction(profile, url) {
@@ -160,6 +187,7 @@ function createWorkbenchServer({
       }
       if (url.pathname.startsWith('/api/authoring/')) return sendJson(res, 200, applyAuthoringAction(authoring, url));
       if (url.pathname === '/api/simulation') return sendJson(res, 200, simulation.snapshot());
+      if (url.pathname === '/api/simulation/placement-evidence') return sendJson(res, 200, placementEvidence(simulation));
       if (url.pathname.startsWith('/api/simulation/')) return sendJson(res, 200, applySimulationAction(simulation, url));
       if (url.pathname === '/' || url.pathname === '/index.html') return serveFile(res, 'parity.html', 'text/html');
       if (url.pathname === '/profile') return serveFile(res, 'profile.html', 'text/html');
@@ -211,4 +239,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { createWorkbenchServer, parseWorldRequest, integerParam, numberParam, textParam, readBody, applySimulationAction, applyProfileAction, applyAuthoringAction };
+module.exports = { createWorkbenchServer, parseWorldRequest, integerParam, numberParam, textParam, readBody, applySimulationAction, applyProfileAction, applyAuthoringAction, placementEvidence };
