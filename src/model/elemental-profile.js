@@ -130,6 +130,58 @@ function overlayElementalProfile(input = {}) {
   });
 }
 
+function normalizeDeformations(deformations = []) {
+  if (!Array.isArray(deformations)) throw new Error('elemental deformations must be an array');
+  return Object.freeze(deformations.map((deformation, index) => {
+    if (deformation?.kind !== 'scale-origin') {
+      throw new Error(`unsupported elemental deformation kind: ${deformation?.kind ?? 'missing'}`);
+    }
+    const origin = assertElement(deformation.origin);
+    const factor = Number(deformation.factor);
+    if (!Number.isFinite(factor) || factor < 0) {
+      throw new Error(`elemental deformation factor must be finite and non-negative: ${origin}`);
+    }
+    return Object.freeze({
+      kind: 'scale-origin',
+      origin,
+      factor,
+      source: String(deformation.source ?? `Property.Deformation.${index + 1}`),
+    });
+  }));
+}
+
+function deformElementalProfile(baseInput = {}, deformations = []) {
+  const base = overlayElementalProfile(baseInput);
+  const rules = normalizeDeformations(deformations);
+  const effectiveWeights = Object.fromEntries(
+    ELEMENT_RING.map((element) => [element, Number(base.composition[element] ?? 0)]),
+  );
+  const trace = [];
+
+  for (const rule of rules) {
+    const before = effectiveWeights[rule.origin];
+    const after = before * rule.factor;
+    effectiveWeights[rule.origin] = after;
+    trace.push(Object.freeze({
+      source: rule.source,
+      kind: rule.kind,
+      origin: rule.origin,
+      factor: rule.factor,
+      before,
+      after,
+    }));
+  }
+
+  const effective = overlayElementalProfile(effectiveWeights);
+  return Object.freeze({
+    base,
+    effective,
+    deformations: rules,
+    trace: Object.freeze(trace),
+    changed: trace.some((entry) => entry.before !== entry.after),
+  });
+}
+
 module.exports = {
   ELEMENT_RING,
   RELATION_WHEEL,
@@ -137,4 +189,6 @@ module.exports = {
   rotateRelationWheel,
   normalizeElementalComposition,
   overlayElementalProfile,
+  normalizeDeformations,
+  deformElementalProfile,
 };
