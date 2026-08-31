@@ -19,10 +19,13 @@ async function main() {
     assert.strictEqual(htmlResponse.status, 200);
     const html = await htmlResponse.text();
     for (const phrase of [
-      'Step Wave', 'Resolve All', 'Dive Into Cell', 'Cross Tick + Resolve Time',
-      'Flip Day/Night', 'Spawn proposition', 'Temporal transfer', 'Player hourglass',
+      'Step Wave', 'Resolve All', 'Dive Into Cell', 'Cross next Tick',
+      'Flip Day/Night', 'Clock → Face', 'Hourglass → Artifact',
+      'Spawn proposition', 'Temporal transfer', 'Player hourglass',
       'Generative overlay', 'One object grammar',
     ]) assert.match(html, new RegExp(phrase.replace(/[+]/g, '\\+')));
+    assert.ok(html.indexOf('id="tick"') > html.indexOf('id="clock"'), 'time crossing control should live with the Clock instrument');
+    assert.ok(html.indexOf('id="spend"') > html.indexOf('id="hourglass"'), 'grain control should live with the Hourglass instrument');
 
     const parityJs = await fetch(`${base}/parity.js`);
     const inspectorJs = await fetch(`${base}/inspector.js`);
