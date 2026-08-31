@@ -60,7 +60,7 @@ for (const seed of [1, 42, 93208, 99991]) {
 
 const world = core.createWorld(93208);
 core.finishWorld(world);
-const field = world.fields[0];
+const field = world.fields[1];
 const cell = field.cells[0];
 const day = new core.Clock();
 const dayCandidate = artifactContextCandidate(world, day, field, cell);
@@ -68,7 +68,7 @@ const night = new core.Clock();
 night.flip();
 const nightCandidate = artifactContextCandidate(world, night, field, cell);
 
-assert.notDeepStrictEqual(dayCandidate.placement.rotatedSignature, nightCandidate.placement.rotatedSignature, 'Clock orientation must be able to rotate the current Artifact placement signature');
+assert.notDeepStrictEqual(dayCandidate.placement.rotatedSignature, nightCandidate.placement.rotatedSignature, 'Clock orientation must be able to rotate the current Artifact placement signature away from a symmetry point');
 assert.notDeepStrictEqual(dayCandidate.relation.relationRoles, nightCandidate.relation.relationRoles, 'Clock orientation must change the directed relation reading');
 
 const unresolvedWorld = core.createWorld(93208);
