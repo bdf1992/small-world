@@ -5,6 +5,7 @@ const { overlayElementalProfile } = require('../model/elemental-profile');
 const { clockProjection, clockProfileReading } = require('./elemental-clock-context');
 const { fieldPriorContract, cellPriorProvenance } = require('./m0.5-map-provenance');
 const { nextWaveEvidence } = require('./m0.5-wave-provenance');
+const { selectedTopologyEvidence } = require('./m0.5-topology-provenance');
 const { resolveWorld } = require('./world');
 
 const ELEMENTS = Object.freeze([...core.E]);
@@ -262,6 +263,7 @@ function selectedProjection(session, waveEvidence = nextWaveEvidence(session.act
   const supply = cell.resolved ? core.temporalSupply(session.activeWorld, session.clock, cell) : null;
   const placementCandidates = spawnProjection(session.activeWorld, session.clock, cell);
   const priorProvenance = cellPriorProvenance(session.activeWorld, field, cell);
+  const topologyProvenance = selectedTopologyEvidence(session.activeWorld, field, cell);
   const receipts = session.activeWorld === session.rootWorld
     ? placementReceipts(session).filter((receipt) => receipt.zone === cell.zone && receipt.cellId === cell.id)
     : Object.freeze([]);
@@ -284,6 +286,7 @@ function selectedProjection(session, waveEvidence = nextWaveEvidence(session.act
       spawnField: projectedCell.spawnField,
       temporalPressure: projectedCell.temporalPressure,
       effectiveField,
+      topologyProvenance,
       priorContract: fieldPriorContract(field),
       priorProvenance,
       nextWave: selectedWaveProjection(waveEvidence, cell.zone, cell.id),
