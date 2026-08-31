@@ -99,6 +99,10 @@ function applyProfileAction(profile, url) {
       factor: numberParam(url.searchParams, 'factor'),
     });
   }
+  if (action === 'cross-tick') return profile.crossTick();
+  if (action === 'flip-clock') return profile.flipClock();
+  if (action === 'cross-grain') return profile.crossGrain({ element: textParam(url.searchParams, 'element') });
+  if (action === 'flip-hourglass') return profile.flipHourglass();
   throw new Error(`unknown profile action: ${action}`);
 }
 
