@@ -25,7 +25,7 @@ async function main() {
     assert.match(page, /class="side-grid focus-rail"/);
     assert.match(page, /class="instrument-dock"/);
     assert.match(page, /Field topology evidence/);
-    assert.match(page, /Spawn \/ relation context/);
+    assert.match(page, /Spawn proposition · relation context/);
     assert.match(page, /id="inspectorDrawer"/);
     assert.match(page, /function revealInspector\(\)/);
     assert.match(page, /drawer\.open = true/);
