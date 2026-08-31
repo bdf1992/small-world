@@ -53,6 +53,8 @@ async function main() {
     assert.strictEqual(snapshot.active.fields.length, 3);
     assert.strictEqual(snapshot.active.fields.flatMap((field) => field.cells).length, 72);
     assert.strictEqual(snapshot.generative.map.regions.length, 3);
+    assert.strictEqual(snapshot.placements.source, 'm0.5.spawnTick');
+    assert.deepStrictEqual(snapshot.placements.receipts, []);
 
     for (const cell of snapshot.active.fields.flatMap((field) => field.cells)) {
       assert.strictEqual(Object.keys(cell.noise).length, 8, 'coherent map noise must remain projected');
@@ -116,11 +118,23 @@ async function main() {
     assert.ok(placementReceipt, 'spawn/placement ledger must carry at least one scored placement receipt');
     assertPlacementCandidate(placementReceipt);
 
+    assert.ok(snapshot.placements.receipts.length >= 1, 'realized placement decisions must have durable addressable receipts');
+    for (const receipt of snapshot.placements.receipts) {
+      assert.match(receipt.id, /^Placement\./);
+      assert.match(receipt.address, /^root\/zone:\d+\/cell:\d+$/);
+      assert.strictEqual(receipt.source, 'm0.5.spawnTick');
+      assertPlacementCandidate(receipt);
+      const field = snapshot.active.fields.find((candidate) => candidate.zone === receipt.zone);
+      const cell = field.cells.find((candidate) => candidate.id === receipt.cellId);
+      assert.ok(cell.spawns.some((marker) => marker.type === receipt.type && marker.at === receipt.at), 'addressable receipt must point back to a realized map marker');
+    }
+
     snapshot = await json(`${base}/api/simulation/dive`, { method: 'POST' });
     assert.strictEqual(snapshot.active.depth, 1);
     assert.strictEqual(snapshot.stack.length, 1);
     assert.ok(snapshot.selected.mapField.relationProfile.contributions.length >= 1);
     assert.strictEqual(Object.keys(snapshot.selected.mapField.noise).length, 8);
+    assert.ok(snapshot.placements.receipts.length >= 1, 'root placement receipts remain inspectable while recursively focused');
     snapshot = await json(`${base}/api/simulation/back`, { method: 'POST' });
     assert.strictEqual(snapshot.active.depth, 0);
 
