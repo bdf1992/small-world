@@ -9,9 +9,10 @@ const {
   createInstance,
 } = require('../model/lifecycle');
 const { TYPES, relationsTo } = require('../model/base-relations');
+const { ELEMENT_RING } = require('../model/elemental-profile');
 const { ARTIFACT_KIND_PACK, weightsFor } = require('./token-packs');
 
-const ELEMENTS = Object.freeze(['Void', 'Fire', 'Chaos', 'Ground', 'Aether', 'Water', 'Order', 'Sky']);
+const ELEMENTS = ELEMENT_RING;
 const GENERIC_CONTRACT = Object.freeze(['Elements', 'Attributes', 'Properties', 'Stats']);
 
 const artifactDefinition = createDefinition({
