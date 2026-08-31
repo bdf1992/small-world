@@ -14,6 +14,29 @@ function componentSum(candidate) {
   return c.fieldFit + c.relationFit + c.cycleFit + c.phaseFit + c.zoneBase + c.side + c.random;
 }
 
+function assertArtifactContext(evidence, snapshot) {
+  const candidate = evidence.artifactContext;
+  assert.ok(candidate, 'resolved selected cell must expose a Virtual<Artifact> context candidate');
+  assert.strictEqual(candidate.kind, 'Virtual<Artifact>.ContextCandidate');
+  assert.strictEqual(candidate.stage, 'virtual');
+  assert.strictEqual(candidate.readOnly, true);
+  assert.strictEqual(candidate.address, evidence.selectedAddress);
+  assert.strictEqual(candidate.admission, null);
+  assert.strictEqual(candidate.realizedArtifact, null);
+  assert.strictEqual(candidate.relation.kind, 'Virtual<Relation>');
+  assert.strictEqual(candidate.relation.relationType, 'ElementalContext');
+  assert.strictEqual(candidate.relation.lifecycle, 'candidate');
+  assert.strictEqual(candidate.relation.authority, 'evidence-only');
+  assert.strictEqual(candidate.relation.direction, 'artifact->map');
+  assert.strictEqual(candidate.relation.map.address, evidence.selectedAddress);
+  assert.strictEqual(candidate.relation.at, snapshot.clock.address);
+  assert.strictEqual(candidate.relation.admission, null);
+  assert.deepStrictEqual(candidate.relation.effects, []);
+  assert.ok(Math.abs(candidate.relation.measurements.sameElementOverlap - candidate.placement.fieldOverlap) < 1e-12);
+  assert.ok(Math.abs(candidate.placement.fieldFit - candidate.placement.fieldOverlap * candidate.placement.fieldWeight) < 1e-12);
+  assert.ok(Math.abs(candidate.relation.measurements.signedContextScore - candidate.relation.measurements.kernelSignedScore) < 1e-12);
+}
+
 async function main() {
   const server = createWorkbenchServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -28,6 +51,7 @@ async function main() {
     assert.match(evidence.selectedAddress, /^root\/zone:\d+\/cell:\d+$/);
     assert.strictEqual(evidence.contract.types.length, 4);
     assert.strictEqual(evidence.selected.length, 4);
+    assertArtifactContext(evidence, snapshot);
 
     for (const candidate of evidence.selected) {
       assert.strictEqual(candidate.at, snapshot.clock.address);
@@ -51,12 +75,15 @@ async function main() {
     assert.strictEqual(firstPoi.terms.seeded.weight, .18);
 
     const before = firstPoi.score;
+    const beforeContext = evidence.artifactContext.relation.measurements.signedContextScore;
     snapshot = await json(`${base}/api/simulation/flip-clock`, { method: 'POST' });
     evidence = await json(`${base}/api/simulation/placement-evidence`);
     assert.strictEqual(evidence.selected[0].at, snapshot.clock.address);
     const afterPoi = evidence.selected.find((candidate) => candidate.type === 'POI');
     assert.notStrictEqual(afterPoi.score, before, 'Clock orientation must change the live placement reading');
     assert.strictEqual(afterPoi.terms.side.side, 'Night');
+    assertArtifactContext(evidence, snapshot);
+    assert.notStrictEqual(evidence.artifactContext.relation.measurements.signedContextScore, beforeContext, 'Clock orientation must change the live Artifact-to-map relation reading');
 
     snapshot = await json(`${base}/api/simulation/finish`, { method: 'POST' });
     const target = snapshot.active.fields[1].cells[Math.floor(snapshot.active.fields[1].cells.length / 2)];
@@ -64,8 +91,9 @@ async function main() {
     evidence = await json(`${base}/api/simulation/placement-evidence`);
     assert.strictEqual(evidence.selectedAddress, `root/zone:${target.zone}/cell:${target.id}`);
     assert.strictEqual(evidence.selected.length, 4);
+    assertArtifactContext(evidence, snapshot);
 
-    console.log('M0.7 live placement scoring evidence HTTP contract: PASS');
+    console.log('M0.7 live placement + Virtual Artifact context evidence HTTP contract: PASS');
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
