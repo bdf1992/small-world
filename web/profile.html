@@ -58,6 +58,41 @@
       </section>
     </aside>
 
+    <section class="panel crossing-panel">
+      <div class="panel-heading">
+        <div><p class="eyebrow">Traversal → boundary → measured state</p><h2>Clock / Hourglass Crossing Instrument</h2></div>
+        <span class="tag">model-owned operations</span>
+      </div>
+      <p class="small crossing-intro">The same effective elemental Profile is read through the current Clock context. A Crossing is recorded only after admitted traversal reaches a meaningful boundary.</p>
+      <div class="crossing-grid">
+        <article class="instrument-card">
+          <div class="instrument-heading"><div><p class="eyebrow">Clock → Face</p><h3>Hand traversal</h3></div><span id="clockAddress" class="tag"></span></div>
+          <canvas id="profileClock" width="320" height="320" aria-label="Clock crossing instrument"></canvas>
+          <div id="clockContext" class="small"></div>
+          <div class="instrument-actions">
+            <button id="crossTick" type="button">Cross next Tick</button>
+            <button id="flipClock" type="button">Flip Day/Night</button>
+          </div>
+        </article>
+
+        <article class="instrument-card">
+          <div class="instrument-heading"><div><p class="eyebrow">Hourglass → Artifact</p><h3>Grain traversal</h3></div><span class="tag">Upper → Neck → Lower</span></div>
+          <div id="hourglassInstrument" class="hourglass-instrument"></div>
+          <div class="grain-controls">
+            <label>grain<select id="grainElement"></select></label>
+            <button id="crossGrain" type="button">Cross Neck</button>
+            <button id="flipHourglass" type="button">Flip Hourglass</button>
+          </div>
+          <div id="grainContext" class="small"></div>
+        </article>
+
+        <article class="instrument-card evidence-card">
+          <div class="instrument-heading"><div><p class="eyebrow">Keep the why</p><h3>Crossing evidence</h3></div><span id="crossingCount" class="tag"></span></div>
+          <div id="crossingEvidence" class="crossing-evidence"></div>
+        </article>
+      </div>
+    </section>
+
     <section class="panel matrix-panel">
       <div class="panel-heading"><div><p class="eyebrow">Keep the why</p><h2>Contribution matrix</h2></div><span class="tag">base → effective</span></div>
       <p class="small">Each target Element shows every overlaid relation that contributes to it. Fire 10 / Water 1 therefore remains Fire-heavy and Water-present everywhere the two wheels overlap.</p>
