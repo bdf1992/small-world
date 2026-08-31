@@ -124,5 +124,76 @@
 
   <script src="/parity.js" defer></script>
   <script src="/inspector.js" defer></script>
+  <script>
+    (() => {
+      let requestRevision = 0;
+
+      function esc(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;');
+      }
+
+      function signed(value) {
+        const number = Number(value ?? 0);
+        return `${number >= 0 ? '+' : ''}${number.toFixed(3)}`;
+      }
+
+      function renderArtifactContext(evidence) {
+        const host = document.getElementById('spawnExplain');
+        if (!host) return;
+        host.querySelector('#artifact-context-relation')?.remove();
+
+        const candidate = evidence?.artifactContext;
+        if (!candidate) return;
+        const relation = candidate.relation;
+        const roles = [...relation.relationRoles]
+          .filter((row) => row.mass > 1e-9)
+          .sort((a, b) => b.mass - a.mass)
+          .slice(0, 4);
+        const roleText = roles
+          .map((row) => `${esc(row.role)} ${(row.mass * 100).toFixed(0)}% (${signed(row.signedContribution)})`)
+          .join(' · ');
+
+        const details = document.createElement('details');
+        details.id = 'artifact-context-relation';
+        details.className = 'selected-profile-disclosure';
+        details.innerHTML = `
+          <summary><span>Artifact ↔ map context</span><span class="tag">Virtual&lt;Relation&gt;</span></summary>
+          <div class="profile-disclosure-body">
+            <div class="small"><b>Virtual&lt;Artifact&gt; placement candidate</b>; this is not an Artifact instance.</div>
+            <div class="small" style="margin-top:7px"><span class="mono">${esc(candidate.address)}</span><br>${esc(relation.kind)} · ${esc(relation.relationType)} · ${esc(relation.lifecycle)} · ${esc(relation.authority)}</div>
+            <div class="small" style="margin-top:7px"><b>Artifact candidate composition</b> comes from <span class="mono">${esc(relation.artifact.source)}</span>.<br><b>Map endpoint</b> comes from <span class="mono">${esc(relation.map.source)}</span>. The two records remain separate.</div>
+            <div class="small" style="margin-top:7px"><b>M0.5 field overlap</b> ${candidate.placement.fieldOverlap.toFixed(4)} × ${candidate.placement.fieldWeight.toFixed(2)} = ${candidate.placement.fieldFit.toFixed(4)}<br><b>Directed elemental context</b> ${signed(relation.measurements.signedContextScore)} @ ${esc(relation.side)} / ${esc(relation.orientation)}<br><b>Relation-role mass</b> ${roleText}</div>
+            <div class="small" style="margin-top:7px"><b>Admission</b> none · <b>realized Artifact</b> none · <b>effects</b> none.<br>This evidence does not place, move, traverse, cross, or mutate anything.</div>
+          </div>`;
+        host.appendChild(details);
+      }
+
+      async function refreshArtifactContext() {
+        const revision = ++requestRevision;
+        try {
+          const response = await fetch('/api/simulation/placement-evidence', { cache: 'no-store' });
+          if (!response.ok) return;
+          const evidence = await response.json();
+          if (revision !== requestRevision) return;
+          renderArtifactContext(evidence);
+        } catch (_) {
+          // The main workbench remains usable if optional evidence fetch fails.
+        }
+      }
+
+      window.addEventListener('DOMContentLoaded', () => {
+        const status = document.getElementById('status');
+        if (status) {
+          const observer = new MutationObserver(() => queueMicrotask(refreshArtifactContext));
+          observer.observe(status, { childList: true, subtree: true, characterData: true });
+        }
+        setTimeout(refreshArtifactContext, 0);
+      });
+    })();
+  </script>
 </body>
 </html>
