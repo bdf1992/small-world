@@ -7,6 +7,7 @@ const {
   rotateRelationWheel,
   normalizeElementalComposition,
   overlayElementalProfile,
+  deformElementalProfile,
 } = require('../src/model/elemental-profile');
 
 function byRole(wheel) {
@@ -92,6 +93,28 @@ function main() {
     origin: 'Water', role: 'Conflict', offset: -3, weight: 1, share: 1 / 11,
   });
 
+  const deformation = deformElementalProfile(
+    { Fire: 10, Water: 1 },
+    [{ kind: 'scale-origin', origin: 'Water', factor: 2, source: 'Property.ProfileScale' }],
+  );
+  assert.deepStrictEqual(deformation.base.composition, { Fire: 10, Water: 1 });
+  assert.deepStrictEqual(deformation.effective.composition, { Fire: 10, Water: 2 });
+  assert.deepStrictEqual(deformation.trace, [{
+    source: 'Property.ProfileScale',
+    kind: 'scale-origin',
+    origin: 'Water',
+    factor: 2,
+    before: 1,
+    after: 2,
+  }]);
+  assert.strictEqual(deformation.changed, true);
+  assert.strictEqual(contribution(deformation.base, 'Fire', 'Water').weight, 1);
+  assert.strictEqual(contribution(deformation.effective, 'Fire', 'Water').weight, 2);
+  assert.deepStrictEqual(RELATION_WHEEL.map((entry) => [entry.offset, entry.role]), [
+    [0, 'Is'], [1, 'Affinity'], [2, 'Anchor'], [3, 'Vice'], [4, 'Nemesis'],
+    [-3, 'Conflict'], [-2, 'Need'], [-1, 'Wants'],
+  ]);
+
   const scaled = overlayElementalProfile({ Fire: 20, Water: 2 });
   assert.deepStrictEqual(scaled.shares, profile.shares);
   assert.strictEqual(scaled.totalWeight, 22);
@@ -99,16 +122,18 @@ function main() {
   assert.throws(() => normalizeElementalComposition({ Fire: 0 }), /at least one positive weight/);
   assert.throws(() => normalizeElementalComposition({ Fire: -1 }), /non-negative/);
   assert.throws(() => normalizeElementalComposition({ Steam: 1 }), /unknown Element/);
+  assert.throws(() => deformElementalProfile({ Fire: 1 }, [{ kind: 'invented', origin: 'Fire', factor: 1 }]), /unsupported/);
 
   console.log(JSON.stringify({
     pass: true,
-    invariant: 'each participating Element rotates the same Relation Wheel and contributes at its own weight',
+    invariant: 'weighted overlay is canonical; local deformation changes effective reading without mutating base Profile',
     proof: {
       composition: profile.composition,
-      shares: profile.shares,
-      fire: profile.byElement.Fire,
-      water: profile.byElement.Water,
-      chaos: profile.byElement.Chaos,
+      effectiveComposition: deformation.effective.composition,
+      trace: deformation.trace,
+      fire: deformation.effective.byElement.Fire,
+      water: deformation.effective.byElement.Water,
+      chaos: deformation.effective.byElement.Chaos,
     },
   }, null, 2));
 }
