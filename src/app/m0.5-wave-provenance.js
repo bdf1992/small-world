@@ -22,6 +22,7 @@ const WAVE_CONTRACT = Object.freeze({
     crowdPenaltyPerExtraSameNeighbor: .34,
     seededGumbelScale: .17,
     elementPick: 'argmax(log(probability) - crowdPenalty + seededGumbel)',
+    sequentialSupport: 'earlier selected collapses propagate support before later selected collapses choose their Element',
     collision: 'rootsTouched.length > 1',
     rootIdentity: 'single root preserved; multiple roots sorted and joined with +',
     collapseWave: 'world.wave + 1',
@@ -89,16 +90,28 @@ function frontierItems(field) {
   return out;
 }
 
-function collapseElementScores(world, field, item) {
-  const neighborElements = item.cell.neighbors
-    .map((index) => field.cells[index])
+function shadowField(field) {
+  return field.cells.map((cell) => ({
+    id: cell.id,
+    neighbors: [...cell.neighbors],
+    resolved: Boolean(cell.resolved),
+    element: cell.element,
+    root: cell.root,
+    prob: cell.prob.slice(),
+    supportHits: cell.supportHits ?? 0,
+  }));
+}
+
+function collapseElementScoresFor(world, field, cellState, cells) {
+  const neighborElements = cellState.neighbors
+    .map((index) => cells[index])
     .filter((neighbor) => neighbor.resolved)
     .map((neighbor) => neighbor.element);
 
-  const rows = item.cell.prob.map((probability, element) => {
+  const rows = cellState.prob.map((probability, element) => {
     const sameNeighborCount = neighborElements.filter((value) => value === element).length;
     const crowdPenalty = Math.max(0, sameNeighborCount - 1) * WAVE_CONTRACT.collapse.crowdPenaltyPerExtraSameNeighbor;
-    const randomRaw = gumbel(world.rootSeed, 'collapse', world.path, field.zone, world.wave, item.cell.id, element);
+    const randomRaw = gumbel(world.rootSeed, 'collapse', world.path, field.zone, world.wave, cellState.id, element);
     const random = WAVE_CONTRACT.collapse.seededGumbelScale * randomRaw;
     const logProbability = Math.log(Math.max(WAVE_CONTRACT.collapse.probabilityFloor, probability));
     return Object.freeze({
@@ -119,23 +132,37 @@ function collapseElementScores(world, field, item) {
   return Object.freeze({ rows: Object.freeze(rows), winner: best });
 }
 
-function propagationPreview(field, cell, element) {
-  return Object.freeze(cell.neighbors
-    .map((index) => field.cells[index])
-    .filter((neighbor) => !neighbor.resolved)
-    .map((neighbor) => {
-      const before = neighbor.prob.slice();
-      const multipliers = before.map((_, candidateElement) => SUPPORT[relationIndex(element, candidateElement)]);
-      const after = normalize(before.map((probability, candidateElement) => probability * multipliers[candidateElement]));
-      return Object.freeze({
-        cellId: neighbor.id,
-        supportHitsBefore: neighbor.supportHits,
-        sourceElement: ELEMENTS[element],
-        relationMultipliers: vectorObject(multipliers),
-        before: vectorObject(before),
-        after: vectorObject(after),
-      });
+function collapseElementScores(world, field, item) {
+  return collapseElementScoresFor(world, field, item.cell, field.cells);
+}
+
+function propagateOnShadow(cells, cellState, element) {
+  const receipts = [];
+  for (const neighborIndex of cellState.neighbors) {
+    const neighbor = cells[neighborIndex];
+    if (neighbor.resolved) continue;
+    const before = neighbor.prob.slice();
+    const multipliers = before.map((_, candidateElement) => SUPPORT[relationIndex(element, candidateElement)]);
+    const after = normalize(before.map((probability, candidateElement) => probability * multipliers[candidateElement]));
+    receipts.push(Object.freeze({
+      cellId: neighbor.id,
+      supportHitsBefore: neighbor.supportHits,
+      supportHitsAfter: neighbor.supportHits + 1,
+      sourceElement: ELEMENTS[element],
+      relationMultipliers: vectorObject(multipliers),
+      before: vectorObject(before),
+      after: vectorObject(after),
     }));
+    neighbor.prob = after;
+    neighbor.supportHits++;
+  }
+  return Object.freeze(receipts);
+}
+
+function propagationPreview(field, cell, element) {
+  const cells = shadowField(field);
+  const shadow = cells[cell.index ?? field.cells.indexOf(cell)];
+  return propagateOnShadow(cells, shadow, element);
 }
 
 function fieldNextWaveEvidence(world, field) {
@@ -189,25 +216,39 @@ function fieldNextWaveEvidence(world, field) {
   rootProposals.sort((a, b) => a.pickScore - b.pickScore || String(a.root).localeCompare(String(b.root)));
   const used = new Set();
   const selectedCollapses = [];
+  const cells = shadowField(field);
+
   for (const proposal of rootProposals) {
     if (used.has(proposal.cellId)) continue;
     const item = frontier.find((candidate) => candidate.cell.id === proposal.cellId);
-    if (!item || item.cell.resolved) continue;
+    if (!item) continue;
+    const cellIndex = field.cells.indexOf(item.cell);
+    const shadow = cells[cellIndex];
+    if (!shadow || shadow.resolved) continue;
+
     used.add(proposal.cellId);
-    const elementScores = collapseElementScores(world, field, item);
+    const probabilityBefore = shadow.prob.slice();
+    const elementScores = collapseElementScoresFor(world, field, shadow, cells);
     const rootsTouched = [...item.roots].sort();
+    const winningElement = elementScores.winner.elementIndex;
+
+    shadow.resolved = true;
+    shadow.element = winningElement;
+    shadow.root = rootsTouched.length === 1 ? rootsTouched[0] : rootsTouched.join('+');
+    const propagation = propagateOnShadow(cells, shadow, winningElement);
+
     selectedCollapses.push(Object.freeze({
       cellId: item.cell.id,
       selectedByRoot: proposal.root,
       rootsTouched: Object.freeze(rootsTouched),
       collision: rootsTouched.length > 1,
-      resultingRoot: rootsTouched.length === 1 ? rootsTouched[0] : rootsTouched.join('+'),
+      resultingRoot: shadow.root,
       predictedElement: elementScores.winner.element,
-      predictedElementIndex: elementScores.winner.elementIndex,
+      predictedElementIndex: winningElement,
       predictedCollapseWave: world.wave + 1,
-      probabilityBefore: vectorObject(item.cell.prob),
+      probabilityBefore: vectorObject(probabilityBefore),
       elementScores,
-      propagation: propagationPreview(field, item.cell, elementScores.winner.elementIndex),
+      propagation,
     }));
   }
 
