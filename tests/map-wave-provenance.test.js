@@ -16,15 +16,18 @@ function cellById(field, id) {
   return field.cells.find((cell) => cell.id === id);
 }
 
-assert.deepStrictEqual(SUPPORT, [.18, 1.28, 1.10, .82, .42, .72, .95, 1.18]);
+// These values are the exact M0.5 `SUPPORT` relation multipliers used by
+// propagateElement. The parity helper must replay the kernel's values rather
+// than maintaining an independently tuned approximation.
+assert.deepStrictEqual(SUPPORT, [1.16, 1.34, 1.20, .98, .62, .80, 1.05, 1.18]);
 assert.deepStrictEqual(WAVE_CONTRACT.supportByRelation, {
-  Is: .18,
-  Affinity: 1.28,
-  Anchor: 1.10,
-  Vice: .82,
-  Nemesis: .42,
-  Conflict: .72,
-  Need: .95,
+  Is: 1.16,
+  Affinity: 1.34,
+  Anchor: 1.20,
+  Vice: .98,
+  Nemesis: .62,
+  Conflict: .80,
+  Need: 1.05,
   Wants: 1.18,
 });
 assert.strictEqual(WAVE_CONTRACT.frontier.tieJitterScale, 1e-5);
