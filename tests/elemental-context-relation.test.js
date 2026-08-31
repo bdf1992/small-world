@@ -21,7 +21,9 @@ const dayRelation = elementalContextRelation({
   mapAddress: 'root/zone:0/cell:test',
 });
 
-assert.strictEqual(dayRelation.kind, 'Relation.ElementalContext');
+assert.strictEqual(dayRelation.kind, 'Virtual<Relation>');
+assert.strictEqual(dayRelation.relationType, 'ElementalContext');
+assert.strictEqual(dayRelation.lifecycle, 'candidate');
 assert.strictEqual(dayRelation.readOnly, true);
 assert.strictEqual(dayRelation.authority, 'evidence-only');
 assert.strictEqual(dayRelation.direction, 'artifact->map');
@@ -87,6 +89,8 @@ assert.strictEqual(JSON.stringify({ tick: day.tick, side: day.side, address: day
 console.log(JSON.stringify({
   pass: true,
   kind: first.kind,
+  relationType: first.relationType,
+  lifecycle: first.lifecycle,
   direction: first.direction,
   relationMassTotal: first.measurements.relationMassTotal,
   signedContextScore: first.measurements.signedContextScore,
