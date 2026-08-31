@@ -15,7 +15,10 @@ function main() {
   assert.strictEqual(snapshot.clock.address, '0:0:0:0');
   assert.strictEqual(snapshot.clock.orientation, 'CW');
   assert.strictEqual(snapshot.crossings.length, 0);
-  assert.strictEqual(snapshot.hourglass.upper.Fire, 2);
+  // Reuse the existing M0.5 Hourglass exactly: [Void, Fire, Chaos, Ground, Aether, Water, Order, Sky]
+  // starts [2, 1, 1, 2, 1, 1, 1, 1]. The proof follows that state rather than
+  // changing the instrument merely to make this test convenient.
+  assert.strictEqual(snapshot.hourglass.upper.Fire, 1);
   assert.strictEqual(snapshot.hourglass.lower.Fire, 0);
   assert.strictEqual(snapshot.clockReading.byTarget.Fire.contributions.length, 2);
 
@@ -48,8 +51,8 @@ function main() {
   assert.strictEqual(grain.traversal.from, 'Hourglass.Upper');
   assert.strictEqual(grain.traversal.via, 'Hourglass.Neck');
   assert.strictEqual(grain.traversal.to, 'Hourglass.Lower');
-  assert.strictEqual(grain.before.hourglass.upper.Fire, 2);
-  assert.strictEqual(grain.after.hourglass.upper.Fire, 1);
+  assert.strictEqual(grain.before.hourglass.upper.Fire, 1);
+  assert.strictEqual(grain.after.hourglass.upper.Fire, 0);
   assert.strictEqual(grain.before.hourglass.lower.Fire, 0);
   assert.strictEqual(grain.after.hourglass.lower.Fire, 1);
   assert.strictEqual(grain.profileReading.target, 'Fire');
@@ -67,7 +70,7 @@ function main() {
 
   const blocked = createElementalProfileProbe();
   blocked.crossGrain({ element: 'Water' });
-  let blockedSnapshot = blocked.crossGrain({ element: 'Water' });
+  const blockedSnapshot = blocked.crossGrain({ element: 'Water' });
   assert.strictEqual(blockedSnapshot.crossings.length, 1);
   assert.strictEqual(blockedSnapshot.lastBlocked.kind, 'TraversalBlocked');
   assert.strictEqual(blockedSnapshot.lastBlocked.reason, 'no grain');
