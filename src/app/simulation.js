@@ -22,7 +22,13 @@ function compactEvent(event) {
     score: Number.isFinite(event.score) ? event.score : null,
     transfer: Number.isFinite(event.transfer) ? event.transfer : null,
     blocked: Number.isFinite(event.blocked) ? event.blocked : null,
+    fieldFit: Number.isFinite(event.fieldFit) ? event.fieldFit : null,
     relationFit: Number.isFinite(event.relationFit) ? event.relationFit : null,
+    cycleFit: Number.isFinite(event.cycleFit) ? event.cycleFit : null,
+    phaseFit: Number.isFinite(event.phaseFit) ? event.phaseFit : null,
+    zoneBase: Number.isFinite(event.zoneBase) ? event.zoneBase : null,
+    side: Number.isFinite(event.side) ? event.side : null,
+    random: Number.isFinite(event.rnd) ? event.rnd : null,
     cycleSeat: Number.isFinite(event.cycleSeat) ? event.cycleSeat : event.cycle?.zoneSeat ?? null,
     entity: event.entity ? Object.freeze({ kind: event.entity.kind, id: event.entity.id }) : null,
   });
@@ -83,6 +89,8 @@ function cellProjection(world, field, cell, { includePreview = true } = {}) {
     resolved: Boolean(cell.resolved),
     element: cell.resolved ? ELEMENTS[cell.element] : null,
     elementIndex: cell.resolved ? cell.element : null,
+    noise: vectorObject(cell.noise),
+    prior: vectorObject(cell.prior),
     probability: vectorObject(cell.resolved ? vector : cell.prob),
     fieldVector: vectorObject(vector),
     entropy: cell.resolved ? 0 : core.entropy(cell.prob),
@@ -164,18 +172,48 @@ function selectedProjection(session) {
   const located = session.locateSelected();
   if (!located) return null;
   const { field, cell } = located;
-  const fieldVector = vectorObject(core.fieldVector(cell));
-  const elementalProfile = overlayElementalProfile(fieldVector);
+  const projectedCell = cellProjection(session.activeWorld, field, cell);
+  const effectiveField = vectorObject(core.fieldVector(cell));
+  const fieldRelationProfile = overlayElementalProfile(effectiveField);
   const supply = cell.resolved ? core.temporalSupply(session.activeWorld, session.clock, cell) : null;
+  const placementCandidates = spawnProjection(session.activeWorld, session.clock, cell);
+
   return Object.freeze({
-    cell: cellProjection(session.activeWorld, field, cell),
+    cell: projectedCell,
     temporalSupply: supply ? vectorObject(supply) : null,
-    spawnCandidates: spawnProjection(session.activeWorld, session.clock, cell),
-    elemental: Object.freeze({
-      source: 'selected.cell.fieldVector',
-      composition: fieldVector,
-      profile: elementalProfile,
-      clockReading: clockProfileReading(elementalProfile, session.clock),
+    spawnCandidates: placementCandidates,
+    mapField: Object.freeze({
+      source: 'm0.5.map.cell',
+      position: projectedCell.point,
+      cyclicSeat: projectedCell.cyclicSeat,
+      noise: projectedCell.noise,
+      externalPressure: projectedCell.externalPressure,
+      prior: projectedCell.prior,
+      probability: projectedCell.probability,
+      initialEntropy: projectedCell.initialEntropy,
+      entropy: projectedCell.entropy,
+      resolvedElement: projectedCell.element,
+      spawnField: projectedCell.spawnField,
+      temporalPressure: projectedCell.temporalPressure,
+      effectiveField,
+      effectiveFieldComposition: Object.freeze({
+        unresolved: 'probability',
+        resolved: Object.freeze({
+          prior: 0.30,
+          resolvedElement: 0.36,
+          externalPressure: 0.14,
+          spawnField: 0.08,
+          temporalPressure: 0.12,
+          normalized: true,
+        }),
+      }),
+      relationProfile: fieldRelationProfile,
+      clockReading: clockProfileReading(fieldRelationProfile, session.clock),
+      placement: Object.freeze({
+        candidates: placementCandidates,
+        history: projectedCell.spawns,
+        selectionRule: 'highest candidate score across resolved cells in each field per tick',
+      }),
     }),
   });
 }
@@ -271,7 +309,13 @@ class SimulationSession {
       score: null,
       transfer: null,
       blocked: null,
+      fieldFit: null,
       relationFit: null,
+      cycleFit: null,
+      phaseFit: null,
+      zoneBase: null,
+      side: null,
+      random: null,
       cycleSeat: null,
       entity: null,
     }));
@@ -291,7 +335,13 @@ class SimulationSession {
       score: null,
       transfer: result.ok ? 1 : null,
       blocked: result.ok ? null : 1,
+      fieldFit: null,
       relationFit: null,
+      cycleFit: null,
+      phaseFit: null,
+      zoneBase: null,
+      side: null,
+      random: null,
       cycleSeat: null,
       entity: null,
     }));
