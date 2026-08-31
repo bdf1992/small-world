@@ -39,9 +39,6 @@
         <button id="dive">Dive Into Cell</button>
         <button id="back">Back</button>
         <span class="separator"></span>
-        <button id="tick">Cross Tick + Resolve Time</button>
-        <button id="flipClock">Flip Day/Night</button>
-        <span class="separator"></span>
         <label>view
           <select id="viewMode">
             <option value="element">elements + child preview</option>
@@ -65,14 +62,15 @@
         <div id="zoneSummary"></div>
       </section>
 
-      <section class="panel side-panel sw-frame" data-sw-domain="instrument">
-        <div class="panel-heading"><h2>Clock</h2><button class="inspect-link" type="button" data-inspect="clock">inspect</button></div>
+      <section class="panel side-panel sw-frame clock-instrument" data-sw-domain="instrument">
+        <div class="panel-heading"><div><p class="eyebrow">Clock → Face</p><h2>Clock</h2></div><button class="inspect-link" type="button" data-inspect="clock">inspect</button></div>
         <canvas id="clock" width="300" height="300"></canvas>
         <div id="clockReadout" class="mono"></div>
+        <div class="actions instrument-actions"><button id="tick">Cross next Tick</button><button id="flipClock">Flip Day/Night</button></div>
       </section>
 
       <section class="panel side-panel sw-frame" data-sw-domain="world">
-        <div class="panel-heading"><h2>Selected cell</h2><button class="inspect-link" type="button" data-inspect="cell">inspect</button></div>
+        <div class="panel-heading"><div><p class="eyebrow">Map → selection</p><h2>Selected cell</h2></div><button class="inspect-link" type="button" data-inspect="cell">inspect</button></div>
         <div id="selected" class="small">Select a visible cell.</div>
       </section>
 
@@ -87,7 +85,7 @@
       </section>
 
       <section class="panel side-panel sw-frame" data-sw-domain="instrument">
-        <div class="panel-heading"><h2>Player hourglass</h2><button class="inspect-link" type="button" data-inspect="hourglass">inspect</button></div>
+        <div class="panel-heading"><div><p class="eyebrow">Hourglass → Artifact</p><h2>Player hourglass</h2></div><button class="inspect-link" type="button" data-inspect="hourglass">inspect</button></div>
         <div id="hourglass"></div>
         <div class="actions"><button id="spend">Spend selected</button><button id="flipGlass">Flip glass</button></div>
       </section>
