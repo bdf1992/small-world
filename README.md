@@ -2,7 +2,10 @@
 
 A bounded generative-world architecture lab for Catalyst Core.
 
-This repository exists to prove that simple authored content can compile into inspectable Virtual possibility spaces and deterministically realize a small world without exposing solver complexity to ordinary content authors.
+The claim this repository exists to test: someone authoring plain content
+should be able to produce a world that runs the same way every time, and to
+inspect the range of what was possible before it settled, without ever meeting
+the solver that does the work.
 
 Current milestone: **M0.6 — Bounded Generative World**.
 
