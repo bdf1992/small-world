@@ -1,10 +1,8 @@
 # small-world
 
-A bounded generative-world architecture lab for Catalyst Core.
+A deterministic world-generation lab for Catalyst Core. Author a small set of content, generate a world from a seed and a bounded search budget, and inspect why each result was selected or left unresolved.
 
-This repository exists to prove that simple authored content can compile into inspectable Virtual possibility spaces and deterministically realize a small world without exposing solver complexity to ordinary content authors.
-
-Current milestone: **M0.6 — Bounded Generative World**.
+**State: M0.6 prototype on `main`; successor work remains under review.** The M0.6 whole-product parity repair is tracked in [PR #12](https://github.com/bdf1992/small-world/pull/12). The M0.7 release candidate received an owner ruling of **REVISE** in [PR #20](https://github.com/bdf1992/small-world/pull/20); later work is in the [open pull requests](https://github.com/bdf1992/small-world/pulls). Passing mechanism tests does not mean the successor has been accepted.
 
 ## Try M0.6
 
@@ -67,7 +65,7 @@ When exercising M0.6, ask:
 - Does every game object feel like part of one interface rather than a bespoke screen?
 - Can the map stay diegetic while deeper generative machinery remains progressively inspectable?
 
-M0.6 is not owner-accepted merely because CI passes. The release candidate is intended to make those questions directly inspectable before landing on `main`.
+These questions remain the owner-facing acceptance criteria. The M0.6 code is on `main`; its whole-product parity repair and M0.7 acceptance are tracked above.
 
 ## Working premise
 
